@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>紙袋清潔俠</title>
+<style>
+@font-face { font-family: "Cubic11"; src: url("font-Cubic_11.woff2") format("woff2"); font-display: block; }
+html, body { margin: 0; height: 100%; background: #07080f; overflow: hidden; touch-action: none; }
+body { display: flex; align-items: center; justify-content: center; font-family: "Cubic11", "Microsoft JhengHei", sans-serif; }
+canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+#touch { position: fixed; inset: 0; pointer-events: none; display: none; }
+#touch.on { display: block; }
+.tb { position: absolute; pointer-events: auto; width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.35); color: #fff;
+  font: 16px "Cubic11", sans-serif; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; }
+.tb.down { background: rgba(255,255,255,.35); }
+#tl { left: 16px; bottom: 70px; } #tr { left: 100px; bottom: 70px; }
+#tu { left: 58px; bottom: 140px; } #td { left: 58px; bottom: 8px; }
+#ta { right: 16px; bottom: 40px; } #tbb { right: 92px; bottom: 16px; } #tc { right: 92px; bottom: 96px; } .ov{display:none;position:fixed;inset:0;background:#05070f;color:#f2e8cc;font:700 17px/1.55 "PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif;align-items:center;justify-content:center;z-index:30;overflow:auto;padding:20px;box-sizing:border-box}
+.box{max-width:440px;width:100%}.big{font-size:26px;color:#ffd65c;text-align:center;margin:0 0 14px}
+.step{background:#10142a;border:3px solid #3a4470;border-radius:12px;padding:12px 14px;margin:10px 0}.step b{color:#7dffa0}.step small{display:block;color:#c0c6dc;font-weight:500;font-size:15px;margin-top:4px}
+.num{display:inline-block;width:26px;height:26px;border-radius:50%;background:#7dffa0;color:#05070f;text-align:center;line-height:26px;margin-right:6px;font-size:16px}
+.warn{border-color:#ff4552}.warn b{color:#ff6a72}.warn .num{background:#ff4552;color:#fff}
+.okb{display:block;margin:16px auto 0;font:700 18px "PingFang TC","Microsoft JhengHei",sans-serif;background:#ffd65c;color:#05070f;border:0;border-radius:10px;padding:12px 22px}
+@media (orientation:portrait) and (max-width:820px){#rot{display:flex}}
+#tx { right: 16px; bottom: 116px; } #tw { right: 168px; bottom: 30px; width: 54px; height: 54px; } #ts { right: 16px; top: 16px; width: 54px; height: 40px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<canvas id="screen"></canvas>
+<div id="touch">
+  <div class="tb" id="tl" data-k="left">◀</div><div class="tb" id="tr" data-k="right">▶</div>
+  <div class="tb" id="tu" data-k="up">▲</div><div class="tb" id="td" data-k="down">▼</div>
+  <div class="tb" id="ta" data-k="jump">跳</div><div class="tb" id="tbb" data-k="shoot">射</div>
+  <div class="tb" id="tc" data-k="dash">衝</div><div class="tb" id="tx" data-k="ult">絕</div><div class="tb" id="tw" data-k="swap">換</div><div class="tb" id="ts" data-k="start">選單</div>
+</div>
+<div id="rot" class="ov"><div class="box">
+<div class="big">📱 請把手機轉成橫的</div>
+<div class="step warn" id="inappTip" style="display:none"><span class="num">!</span><b>請改用外部瀏覽器開啟</b><small>你現在是在 LINE／FB／IG／Google 等 App 裡面開啟。請點右上或右下角的「⋮」或「…」選單 →「在瀏覽器中開啟」（iPhone 用 Safari，Android 用 Chrome），音樂和音效才會正常。</small></div>
+<div class="step"><span class="num">1</span><b>先打開「自動旋轉」（解除直向鎖定）</b><small>iPhone：從螢幕右上角往下滑，打開控制中心 → 點「🔒 鎖頭＋箭頭」圖示，讓它變成灰色（關閉鎖定）。<br>Android：從螢幕上方往下滑 → 打開「自動旋轉」。</small></div>
+<div class="step"><span class="num">2</span><b>把手機轉成橫的</b><small>畫面轉過來後，遊戲就會出現。</small></div>
+</div></div>
+<div id="inapp" class="ov"><div class="box">
+<div class="big">⚠ 建議用外部瀏覽器開啟</div>
+<div class="step warn"><span class="num">!</span><b>你現在是在 App 裡開啟</b><small>在 LINE、FB、IG、Google App 裡面玩，音樂、音效和動畫可能不正常。<br>請點畫面上的「⋮」或「…」選單 →「在瀏覽器中開啟」（iPhone 用 Safari，Android 用 Chrome）。</small></div>
+<button class="okb" id="inappOk">知道了，繼續在這裡玩</button>
+</div></div>
+<script>(function(){var ua=navigator.userAgent||'',inApp=/Line\/|FBAN|FBAV|FB_IAB|FBIOS|Instagram|GSA\/|Messenger|MicroMessenger|KAKAOTALK|Threads|Barcelona/i.test(ua);
+if(!inApp)return;document.getElementById('inappTip').style.display='block';var seen=false;try{seen=sessionStorage.getItem('inappOk')==='1'}catch(e){}
+var ov=document.getElementById('inapp'),land=function(){return window.matchMedia('(orientation:landscape)').matches||window.innerWidth>820},upd=function(){ov.style.display=!seen&&land()?'flex':'none'};upd();window.addEventListener('resize',upd);
+document.getElementById('inappOk').addEventListener('click',function(){seen=true;try{sessionStorage.setItem('inappOk','1')}catch(e){}upd()})})();
+// 手機：第一次觸控就全螢幕＋鎖定橫向
+addEventListener('touchstart',function f(){try{if(!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(function(){screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(function(){})}).catch(function(){})}catch(e){}},{once:true,passive:true});</script>
+<script type="importmap">{ "imports": { "three": "./three.module.js" } }</script>
+<script type="module" src="vfx.mjs"></script>
+<script src="audio.js"></script>
+<script src="sprites.js"></script>
+<script src="sheets.js"></script>
+<script src="levels.js"></script>
+<script src="entities.js"></script>
+<script src="bosses.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
