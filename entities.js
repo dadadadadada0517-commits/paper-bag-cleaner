@@ -172,7 +172,7 @@ class Player {
     if (this.dashT > 0) {
       this.dashT--; this.vx = this.face * 3.4; this.vy = this.onGround ? this.vy : Math.min(this.vy, 0.2);
       if (this.anim % 3 === 0) G.parts.push({ x: this.cx - this.face * 14, y: this.y + this.h - 3, vx: -this.face * 0.8, vy: -0.3, life: 18, max: 18, c: '#e8dcc0', s: 3, g: 0 });
-      if (I.pressed.jump && this.onGround) { this.dashT = 0; this.dashJump = true; this.vy = -5.3; Audio8.sfx('jump'); }
+      if (I.pressed.jump && this.onGround) { this.dashT = 0; this.dashJump = true; this.vy = -6; Audio8.sfx('jump'); }
       if (!this.dashT) this.dashCd = 8;
     } else {
       const sp = this.dashJump ? 2.6 : speed;
@@ -190,7 +190,7 @@ class Player {
       else this.vx = 0;
       // 跳躍
       if (I.pressed.jump) {
-        if (this.onGround && !this.crouch) { this.vy = -5.3; Audio8.sfx('jump'); }
+        if (this.onGround && !this.crouch) { this.vy = -6; Audio8.sfx('jump'); }
         else if (A.djump && this.djump) { this.djump = false; this.vy = -4.6; Audio8.sfx('djump'); FX('puff', this.cx, this.y + this.h, { opts: { color: '#ff9ae6', size: 0.4 } }); for (let i = 0; i < 6; i++) G.parts.push({ x: this.cx + rnd(-6, 6), y: this.y + this.h, vx: rnd(-1, 1), vy: rnd(0.5, 1.5), life: 24, max: 24, c: '#ffc8f0', s: 3, g: 0, bubble: true }); }
       }
       if (!I.held.jump && this.vy < -1.5) this.vy = -1.5;
@@ -648,7 +648,7 @@ class Enemy {
       if (this.code === 's') { const k = 1 + Math.sin(this.t / 6) * 0.12; ctx.translate(this.cx - cx, dy); ctx.scale(1 / k, k); ctx.translate(-(this.cx - cx), -dy); }
       if (this.code === 'o' && this.state === 'sorry') ctx.globalAlpha = 0.85;
       if (this.code !== 'o' && this.code !== 'v') { ctx.translate(this.cx - cx, dy); ctx.scale(1.5, 1.5); ctx.translate(-(this.cx - cx), -dy); } // 小怪放大 50%
-      SPR.draw(ctx, sk, this.cx - cx, dy, this.face > 0 ? 1 : -1, false);
+      if (this.code === 'o') SPR.drawBigHead(ctx, sk, this.cx - cx, dy, this.face > 0 ? 1 : -1); else SPR.draw(ctx, sk, this.cx - cx, dy, this.face > 0 ? 1 : -1, false);
       if (this.flash > 0) SPR.draw(ctx, sk, this.cx - cx, dy, this.face > 0 ? 1 : -1, true, 0.8);
       ctx.restore();
       if (this.code === 'o' && this.throwT) ctx.drawImage(PX.S.poopBag, Math.round(this.cx - cx + this.face * 6 - 5), Math.round(this.y - 6));
@@ -750,7 +750,7 @@ class NPC {
     const dx = Math.round(this.cx - cx), dy = Math.round(this.y + this.h);
     const talking = G.dialog && G.talkTarget === this;
     const sk = this.who === 'chief' ? (talking ? 'chief' + (1 + ((G.t >> 3) % 2)) : this.near ? 'chief3' : 'chief0') : (talking ? 'kid' + (2 + ((G.t >> 4) % 2)) : this.near ? 'kid1' : 'kid0');
-    if (!SPR.draw(ctx, sk, dx, dy + 1, this.face)) {
+    if (!SPR.drawBigHead(ctx, sk, dx, dy + 1, this.face)) {
       const img = PX.S[this.who + (Math.floor(this.t / 30) % 2 ? 1 : 0)];
       ctx.save(); ctx.translate(dx, dy); ctx.scale(this.face, 1); ctx.drawImage(img, -Math.round(img.width / 2), -img.height + 1); ctx.restore();
     }

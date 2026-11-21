@@ -165,5 +165,14 @@ const SPR = (() => {
     ctx.drawImage(white ? s.white : s.img, -s.ax, -s.h, s.w, s.h);
     ctx.restore(); return true;
   }
-  return { load, has, draw, f, get progress() { return total ? loaded / total : 1; } };
+  // 大頭版：先畫身體，再把頭部（上方 frac 比例）放大 k 倍蓋上去，以脖子為基準
+  function drawBigHead(ctx, name, x, y, flip = 1, k = 1.35, frac = 0.4) {
+    const s = f[name]; if (!s) return false;
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (flip < 0) ctx.scale(-1, 1);
+    ctx.drawImage(s.img, -s.ax, -s.h, s.w, s.h);
+    const hh = s.h * frac, sh = s.img.height * frac;
+    ctx.drawImage(s.img, 0, 0, s.img.width, sh, -s.ax * k, -s.h + hh - hh * k, s.w * k, hh * k);
+    ctx.restore(); return true;
+  }
+  return { load, has, draw, drawBigHead, f, get progress() { return total ? loaded / total : 1; } };
 })();

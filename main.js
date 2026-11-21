@@ -119,7 +119,7 @@ function drawCameo(cam, back) {
   const C = CAMEOS[c.id];
   const key = c.gift && c.phase === 'hover' ? C.idle : c.gift && c.phase === 'throw' ? C.throw : C.fly + (Math.floor(c.t / 6) % 2);
   const s = SPR.f[key]; if (!s) return;
-  const k = back ? 0.7 : 1;
+  const k = back ? 1.1 : 1.5;
   ctx.save(); ctx.translate(Math.round(c.x - cam), Math.round(c.y)); ctx.scale(c.dir * k, k); if (back) ctx.globalAlpha = 0.92;
   ctx.drawImage(s.img, -s.ax, -s.h / 2, s.w, s.h); ctx.restore();
   const onScr = c.x - cam > 10 && c.x - cam < VW - 10;
