@@ -264,7 +264,11 @@ class Boss {
       if (this.kind === 'witch') dy += 6 + (this.defeated ? 0 : Math.round(Math.sin(this.t / 10) * 2));
       if (this.kind === 'dogking' && !this.defeated && this.t % 40 < 20) { ctx.globalAlpha = 0.18; ctx.fillStyle = '#9b4dff'; ctx.beginPath(); ctx.ellipse(this.cx - cx, this.cy, this.w * 0.8, this.h * 0.7, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
       if (this.rise) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, VW, this.floorY); ctx.clip(); SPR.draw(ctx, sk, this.cx - cx, dy + this.rise * 72, this.face); ctx.restore(); }
-      else { SPR.draw(ctx, sk, this.cx - cx, dy, this.face); if (white) SPR.draw(ctx, sk, this.cx - cx, dy, this.face, true, 0.85); }
+      else { // 被打到：左右抖一下＋往下壓扁一點（受傷反應），再加白色閃爍
+        const hit = this.flash > 8 && !this.defeated, ox = hit ? (this.flash % 4 < 2 ? -2 : 2) : 0, sq = hit ? 0.93 : 1;
+        ctx.save(); ctx.translate(Math.round(this.cx - cx + ox), dy); ctx.scale(2 - sq, sq);
+        SPR.draw(ctx, sk, 0, 0, this.face); if (white) SPR.draw(ctx, sk, 0, 0, this.face, true, 0.85);
+        ctx.restore(); }
       if (this.kind === 'lady' && sk === 'l_stand' && !SPR.has('chi')) {}
       return;
     }
