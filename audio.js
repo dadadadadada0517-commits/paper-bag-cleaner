@@ -6,6 +6,7 @@ const Audio8 = (() => {
   try { muted = localStorage.getItem('pbh_mute') === '1'; } catch (e) {}
 
   function init() {
+    try { unlockBgm(); } catch (e) {}
     if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
     ac = new (window.AudioContext || window.webkitAudioContext)();
     master = ac.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(ac.destination);
@@ -185,7 +186,7 @@ const Audio8 = (() => {
   function stopMusic() {
     if (timer) clearInterval(timer); timer = null; cur = null; curName = null;
     if (ext.el) { ext.el.pause(); ext.el = null; }
-    for (const k in els) if (!els[k].el.paused) els[k].el.pause();
+    if (bgm && !bgm.paused) bgm.pause();
   }
   function startChip(name, cb) {
     const s = getSong(name); if (!s) return;
@@ -194,35 +195,34 @@ const Audio8 = (() => {
     timer = setInterval(tick, 25); tick();
   }
   // Suno 配樂：開遊戲就全部預先載入；載入中先保持安靜（不再用合成音頂替），載好立刻播放
-  const LOOP_SONGS = ['title', 'stage1', 'stage2', 'stage3', 'stage4', 'boss', 'witch', 'ending'];
-  const els = {};
-  function preload(name) {
-    if (els[name]) return els[name];
-    const el = new Audio(); el.preload = 'auto'; el.loop = true; el.volume = 0.6; el.muted = muted;
-    const rec = els[name] = { el, state: 'loading' };
-    el.addEventListener('canplaythrough', () => { if (rec.state !== 'ok') { rec.state = 'ok'; if (curName === name && !ext.el) playEl(name); } });
-    el.addEventListener('error', () => { rec.state = 'fail'; if (curName === name && !ext.el && !cur) startChip(name); });
-    el.src = 'music-' + name + '.mp3'; el.load();
-    return rec;
+  // 只用「一個」音樂播放器、邊下載邊播：iPhone 不會預先下載音訊，第一次點畫面時就把它解鎖，之後換歌不用再按
+  let bgm = null, bgmName = null, fadeT = null;
+  function bgmEl() {
+    if (bgm) return bgm;
+    bgm = new Audio(); bgm.loop = true; bgm.preload = 'auto'; bgm.setAttribute('playsinline', '');
+    bgm.addEventListener('error', () => { if (curName && curName === bgmName && !cur) { ext.el = null; startChip(curName); } });
+    return bgm;
+  }
+  function unlockBgm() {
+    const el = bgmEl(); if (el._unlocked) return; el._unlocked = true;
+    if (!el.src) { el.src = 'assets/music/title.mp3'; bgmName = 'title'; }
+    el.muted = true; const p = el.play();
+    const done = () => { if (ext.el !== el) el.pause(); el.muted = muted; };
+    if (p && p.then) p.then(done, done); else done();
   }
   function playEl(name) {
-    const rec = els[name]; if (!rec) return;
-    if (cur) { if (timer) clearInterval(timer); timer = null; cur = null; } // 如果合成音在播，切換成 Suno
-    ext.el = rec.el; rec.el.muted = muted; rec.el.currentTime = 0;
-    rec.el.volume = 0; rec.el.play().catch(() => {});
-    let v = 0; const fade = setInterval(() => { v = Math.min(0.6, v + 0.06); rec.el.volume = v; if (v >= 0.6 || ext.el !== rec.el) clearInterval(fade); }, 40);
+    const el = bgmEl();
+    if (cur) { if (timer) clearInterval(timer); timer = null; cur = null; }
+    if (bgmName !== name) { el.src = 'music-' + name + '.mp3'; bgmName = name; } else el.currentTime = 0;
+    ext.el = el; el.muted = muted; el.volume = 0; el.play().catch(() => {});
+    clearInterval(fadeT); let v = 0; fadeT = setInterval(() => { v = Math.min(0.6, v + 0.06); el.volume = v; if (v >= 0.6 || ext.el !== el) clearInterval(fadeT); }, 40);
   }
   function music(name, cb) {
     if (!ac) init();
     if (curName === name) return;
     stopMusic(); curName = name;
     if (!SONGS[name] || !SONGS[name].loop) { startChip(name, cb); curName = name; return; }
-    LOOP_SONGS.forEach(preload);
-    const rec = preload(name);
-    if (rec.state === 'ok') playEl(name);
-    else if (rec.state === 'fail') { startChip(name, cb); curName = name; }
-    // 'loading'：等 canplaythrough 自動播放；10 秒還沒好才用合成音
-    else setTimeout(() => { if (curName === name && !ext.el && !cur && rec.state === 'loading') { startChip(name, cb); curName = name; } }, 10000);
+    playEl(name); // 直接串流播放 Suno（不再先用合成音頂替）
   }
 
   // --- 音效 ---

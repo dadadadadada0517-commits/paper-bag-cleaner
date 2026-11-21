@@ -37,20 +37,21 @@ addEventListener('resize', resize); resize();
 
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg'; });
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg?v=11211353'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
-// 去紫邊：貼著透明區的邊緣像素若帶洋紅色調（壓縮造成），把紅、藍壓回接近綠色，邊緣兩圈都處理
+// 去紫邊：只處理貼著透明區、而且「非常接近洋紅」的邊緣像素（不會吃掉粉紅、紫色的衣服頭髮）
 function despill(p, W, H) {
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = 0; pass < 1; pass++) {
     const edge = new Uint8Array(W * H);
     for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) {
       const i = Y * W + X; if (!p[i * 4 + 3]) continue;
       if ((X > 0 && !p[(i - 1) * 4 + 3]) || (X < W - 1 && !p[(i + 1) * 4 + 3]) || (Y > 0 && !p[(i - W) * 4 + 3]) || (Y < H - 1 && !p[(i + W) * 4 + 3])) edge[i] = 1;
     }
     for (let i = 0; i < W * H; i++) {
-      if (!edge[i]) continue; const o = i * 4, r = p[o], g = p[o + 1], b = p[o + 2], sp = Math.min(r, b) - g;
-      if (sp > 30) { if (sp > 90 && r > 140 && b > 140) { p[o + 3] = 0; continue; } const m = g + sp * 0.25; p[o] = Math.min(r, m + (r - b > 0 ? r - b : 0)); p[o + 2] = Math.min(b, m + (b - r > 0 ? b - r : 0)); }
+      if (!edge[i]) continue; const o = i * 4, r = p[o], g = p[o + 1], b = p[o + 2];
+      // 只有「紅≈藍、綠很低」的洋紅混色才處理
+      if (Math.abs(r - b) < 45 && g < Math.min(r, b) * 0.4 && r > 120 && b > 120) { if (g < 70 && r > 200 && b > 200) p[o + 3] = 0; else { const m = Math.round((r + b) / 2 * 0.45); p[o] = Math.min(r, m); p[o + 2] = Math.min(b, m); } }
     }
   }
 }
@@ -66,7 +67,7 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.webp'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.webp?v=11211353'; });
 // 宣導標語：解決狀況時在畫面上方滑入（每關每種只出現一次）
 const TIPS = {
   poop: '遛狗不撿狗便便，依《廢棄物清理法》\n可罰新台幣 1,200～6,000 元！',
@@ -98,10 +99,10 @@ const MIDIMG = {}, PITIMG = {}, SELHEAD = [];
   let segs = [], s = -1; col.forEach((v, i) => { if (v && s < 0) s = i; if (!v && s >= 0) { segs.push([s, i]); s = -1; } }); if (s >= 0) segs.push([s, c.width]);
   segs = segs.filter(g => g[1] - g[0] > c.width / 40).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 5).sort((a, b) => a[0] - b[0]);
   for (const [a, b] of segs) { let top = c.height, bot = 0; for (let j = 0; j < c.height; j++) for (let i = a; i < b; i += 2) if (d[(j * c.width + i) * 4 + 3] > 0) { if (j < top) top = j; bot = j; break; } const o = document.createElement('canvas'); o.width = b - a; o.height = bot - top + 1; o.getContext('2d').drawImage(c, a, top, b - a, bot - top + 1, 0, 0, b - a, bot - top + 1); SELHEAD.push(o); }
-} catch (e) {} }; im.src = 'art-sel_heads.webp'; }
+} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11211353'; }
 [1, 2, 3, 4].forEach(n => {
-  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp';
-  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp';
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11211353';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11211353';
 });
 
 // ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
@@ -514,7 +515,7 @@ function update() {
   }
   stepScript();
   switch (G.mode) {
-    case 'boot': if (I.pressed.ok || I.pressed.left || I.pressed.right) { Audio8.init(); goTitle(); } break;
+    case 'boot': if (SPR.progress >= 1 && (I.pressed.ok || I.pressed.left || I.pressed.right)) { Audio8.init(); goTitle(); } break; // 人物圖讀完才能開始
     case 'title': {
       const opts = titleOptions();
       if (I.pressed.up) { G.menu = (G.menu + opts.length - 1) % opts.length; Audio8.sfx('cursor'); }
@@ -1084,6 +1085,7 @@ function drawTitle() {
   const g = sctx.createLinearGradient(0, 120 * K, 0, VH * K); g.addColorStop(0, 'rgba(7,8,15,0)'); g.addColorStop(1, 'rgba(7,8,15,0.92)'); sctx.fillStyle = g; sctx.fillRect(0, 0, VW * K, VH * K);
   const bob = Math.sin(G.t / 30) * 2;
   if (!uiImg('ui_logo', 200, 42 + bob, 250)) { txt('小編出擊！', 200, 18 + bob, 34, '#ffe36a', 'center', '#5a1d00'); txt('維護環境 你我一起來！', 200, 58 + bob, 9, '#fff', 'center'); }
+  if (G.mode === 'boot' && SPR.progress < 1) { const pr = SPR.progress; box(120, 176, 160, 12, 'rgba(10,12,28,0.85)', '#ffd23f'); sctx.fillStyle = '#7dffa0'; sctx.fillRect(122 * K, 178 * K, 156 * pr * K, 8 * K); txt('讀取中… ' + Math.round(pr * 100) + '%', 200, 162, 10, '#fff', 'center'); return; }
   if (G.mode === 'boot') { if ((G.t >> 5) % 2) txt(IS_TOUCH ? '點一下畫面開始' : '按任意鍵開始（Enter / Z）', 200, 180, 11, '#fff', 'center'); return; }
   if (G.mode === 'help') { drawHelp(); return; }
   const opts = titleOptions();

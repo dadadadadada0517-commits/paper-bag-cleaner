@@ -48,8 +48,10 @@ const SPR = (() => {
     const im = x.getImageData(0, 0, W, H), d = im.data, fg = new Uint8Array(W * H);
     // 判斷底色（看四角）
     const corner = [0, W - 1, (H - 1) * W, H * W - 1].map(i => [d[i * 4], d[i * 4 + 1], d[i * 4 + 2]]);
-    const magenta = corner.filter(([r, g, b]) => isMag(r, g, b)).length >= 2;
-    if (magenta) { for (let i = 0; i < W * H; i++) fg[i] = isMag(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]) ? 0 : 1; }
+    // 網頁版的圖已預先去背（透明底），本機版是洋紅底：兩種都當成「去背模式」
+    const clear = [0, W - 1, (H - 1) * W, H * W - 1].filter(i => d[i * 4 + 3] < 128).length >= 2;
+    const magenta = clear || corner.filter(([r, g, b]) => isMag(r, g, b)).length >= 2;
+    if (magenta) { for (let i = 0; i < W * H; i++) fg[i] = d[i * 4 + 3] < 128 || isMag(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]) ? 0 : 1; }
     else { // 白底：從邊緣灌水
       fg.fill(1); const st = [];
       for (let X = 0; X < W; X++) st.push(X, (H - 1) * W + X); for (let Y = 0; Y < H; Y++) st.push(Y * W, Y * W + W - 1);
@@ -156,7 +158,7 @@ const SPR = (() => {
         if (file === 'dogs') Object.keys(f).filter(n => n.startsWith('d_')).forEach(n => recolor(n, 'W' + n, (r, g, b) => { const l = (r + g + b) / 3; return [Math.min(255, l * 0.5 + 125), Math.min(255, l * 0.5 + 123), Math.min(255, l * 0.5 + 130)]; }));
       };
       img.onerror = () => { loaded++; };
-      img.src = (spec.dir || 'sheets') + '-' + file + '.webp';
+      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11211353';
     }
   }
   function has(n) { return !!f[n]; }

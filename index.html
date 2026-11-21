@@ -6,7 +6,10 @@
 <title>小編出擊！</title>
 <style>
 @font-face { font-family: "Cubic11"; src: url("font-Cubic_11.woff2") format("woff2"); font-display: block; }
-html, body { margin: 0; height: 100%; background: #07080f; overflow: hidden; touch-action: none; }
+html, body { margin: 0; height: 100%; background: #07080f; overflow: hidden; touch-action: none; -webkit-text-size-adjust: 100%; -webkit-user-select: none; user-select: none; overscroll-behavior: none; }
+/* iPhone Safari 不理會 user-scalable=no：所有元素都關掉雙擊縮放／手勢 */
+* { touch-action: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.ov, .ov * { touch-action: pan-y; }
 body { display: flex; align-items: center; justify-content: center; font-family: "Cubic11", "Microsoft JhengHei", sans-serif; }
 canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
 /* 觸控手把：左邊蘑菇頭、右邊 SFC 式按鍵（疊在遊戲畫面上，半透明） */
@@ -69,20 +72,29 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 <div class="step warn"><span class="num">!</span><b>你現在是在 App 裡開啟</b><small>在 LINE、FB、IG、Google App 裡面玩，音樂、音效和動畫可能不正常。<br>請點畫面上的「⋮」或「…」選單 →「在瀏覽器中開啟」（iPhone 用 Safari，Android 用 Chrome）。</small></div>
 <button class="okb" id="inappOk">知道了，繼續在這裡玩</button>
 </div></div>
+<script>
+// iPhone 防放大：最先載入，不管點哪裡都擋（雙擊、兩指縮放、手勢）
+(function(){var last=0,pv=function(e){if(e.cancelable)e.preventDefault();},inOv=function(e){return e.target&&e.target.closest&&e.target.closest('.ov,button');};
+document.addEventListener('touchstart',function(e){if(e.touches.length>1)pv(e);},{passive:false});
+document.addEventListener('touchmove',function(e){if(e.touches.length>1||e.scale&&e.scale!==1)pv(e);},{passive:false});
+document.addEventListener('touchend',function(e){var n=Date.now();if(n-last<400&&!inOv(e))pv(e);last=n;},{passive:false});
+['gesturestart','gesturechange','gestureend','dblclick'].forEach(function(t){document.addEventListener(t,pv,{passive:false});});
+})();
+</script>
 <script>(function(){var ua=navigator.userAgent||'',inApp=/Line\/|FBAN|FBAV|FB_IAB|FBIOS|Instagram|GSA\/|Messenger|MicroMessenger|KAKAOTALK|Threads|Barcelona/i.test(ua);
 if(!inApp)return;document.getElementById('inappTip').style.display='block';var seen=false;try{seen=sessionStorage.getItem('inappOk')==='1'}catch(e){}
 var ov=document.getElementById('inapp'),land=function(){return window.matchMedia('(orientation:landscape)').matches||window.innerWidth>820},upd=function(){ov.style.display=!seen&&land()?'flex':'none'};upd();window.addEventListener('resize',upd);
 document.getElementById('inappOk').addEventListener('click',function(){seen=true;try{sessionStorage.setItem('inappOk','1')}catch(e){}upd()})})();
 // 手機：第一次觸控就全螢幕＋鎖定橫向
 addEventListener('touchstart',function f(){try{if(!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(function(){screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(function(){})}).catch(function(){})}catch(e){}},{once:true,passive:true});</script>
-<script src="audio.js"></script>
-<script src="sprites.js"></script>
-<script src="sheets.js"></script>
-<script src="levels.js"></script>
-<script src="entities.js"></script>
-<script src="bosses.js"></script>
-<script src="main.js"></script>
-<script src="intruders.js"></script>
-<script src="touch.js"></script>
+<script src="audio.js?v=11211353"></script>
+<script src="sprites.js?v=11211353"></script>
+<script src="sheets.js?v=11211353"></script>
+<script src="levels.js?v=11211353"></script>
+<script src="entities.js?v=11211353"></script>
+<script src="bosses.js?v=11211353"></script>
+<script src="main.js?v=11211353"></script>
+<script src="intruders.js?v=11211353"></script>
+<script src="touch.js?v=11211353"></script>
 </body>
 </html>
