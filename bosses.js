@@ -207,7 +207,9 @@ class Boss {
         // 流星雨：至少 5 顆（後半 7 顆），一顆接一顆：先出現鎖定標記，再快速斜斜砸下來
         if (this.st === 1) {
           const n = this.phase2 ? 7 : 5, xs = [clamp(P.cx, this.ax0 + 24, this.ax1 - 24)];
-          while (xs.length < n) { const x = rnd(this.ax0 + 24, this.ax1 - 24); if (xs.every(o => Math.abs(o - x) > 40) || xs.length > 20) xs.push(x); }
+          // 隨機挑落點但最多試 200 次（以前可能永遠找不到位置 → 當機），不夠就平均分布補滿
+          for (let tries = 0; xs.length < n && tries < 200; tries++) { const x = rnd(this.ax0 + 24, this.ax1 - 24); if (xs.every(o => Math.abs(o - x) > 36)) xs.push(x); }
+          for (let i = 0; xs.length < n; i++) xs.push(this.ax0 + 24 + ((i + 0.5) / n) * (this.ax1 - this.ax0 - 48));
           this.meteors = xs.map((x, i) => ({ x, t0: 1 + i * 13 }));
           floatText(this.cx, this.y - 10, '流星雨魔法！', '#ff8a8a', true); Audio8.sfx('siren');
         }
