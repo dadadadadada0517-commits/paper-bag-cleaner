@@ -17,6 +17,7 @@ const SPR = (() => {
     h3: { rows: [['m_idle', 'm_step', 'm_run0', 'm_run1', 'm_run2'], ['m_shoot', 'm_rs0', 'm_rs1', 'm_rs2', 'm_jump', 'm_jshoot', 'm_hurt']], h: 44 },
     h2: { rows: [['h_climb0', 'h_climb1', 'h_hurt', 'h_stagger', 'h_kneel'], ['h_idle0', 'h_idle1', 'h_wave', 'h_thumb', 'h_cheer']], h: 44, ref: [1, 0] },
     witch: { rows: [['w_stand', ...R8('w_run')], ['w_ride0', 'w_ride1', 'w_ride2', 'w_ride3', 'w_sweep0', 'w_sweep1', 'w_sweep2', 'w_sweep3', 'w_cheer']], h: 46 },
+    boss_hurt: { feet: /hurt/, rows: [['a_hurt', 'l_hurt', 'k_hurt']], h: [[44, 48, 72]] }, // 關主被打到的姿勢（GPT）
     witch_hurt: { rows: [['w_hit', 'w_stagger', 'w_kneel']], h: 44, left: true },
     abo: { feet: /^a_(t|stand|sorry)/, rows: [['a_stand', ...R8('a_walk')], ['a_t0', 'a_t1', 'a_t2', 'a_j0', 'a_j1', 'a_sorry0', 'a_sorry1']], h: 44 },
     lady: { feet: /^l_(t|stand|cry)/, rows: [['l_stand', ...R8('l_walk')], ['l_t0', 'l_t1', 'l_t2', 'l_j0', 'l_j1', 'l_j2', 'l_cry0', 'l_cry1']], h: 48 },
@@ -159,7 +160,7 @@ const SPR = (() => {
         if (file === 'dogs') Object.keys(f).filter(n => n.startsWith('d_')).forEach(n => recolor(n, 'W' + n, (r, g, b) => { const l = (r + g + b) / 3; return [Math.min(255, l * 0.5 + 125), Math.min(255, l * 0.5 + 123), Math.min(255, l * 0.5 + 130)]; }));
       };
       img.onerror = () => { loaded++; };
-      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11211921';
+      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11211954';
     }
   }
   function has(n) { return !!f[n]; }

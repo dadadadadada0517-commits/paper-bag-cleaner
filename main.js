@@ -39,7 +39,7 @@ addEventListener('resize', resize); resize();
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
 const LOAD = { n: 0, done: 0 }; // 讀取進度（成功或失敗都算完成，不會卡住）
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { IMG[k] = im; LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'gpt-' + k + '.jpg?v=11211931'; });
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { IMG[k] = im; LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'gpt-' + k + '.jpg?v=11211954'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
 // 去紫邊：只處理貼著透明區、而且「非常接近洋紅」的邊緣像素（不會吃掉粉紅、紫色的衣服頭髮）
@@ -74,7 +74,7 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'ui-' + k + '.webp?v=11211931'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'ui-' + k + '.webp?v=11211954'; });
 // 全部讀完（人物圖＋介面圖＋背景）＝ 1；超過 25 秒也直接放行
 const LOAD_T0 = performance.now();
 function loadProgress() { const p = SPR.progress * 0.6 + (LOAD.n ? LOAD.done / LOAD.n : 1) * 0.4; return performance.now() - LOAD_T0 > 25000 ? 1 : Math.min(1, p); }
@@ -129,10 +129,10 @@ const MIDIMG = {}, PITIMG = {}, SELHEAD = [];
   let segs = [], s = -1; col.forEach((v, i) => { if (v && s < 0) s = i; if (!v && s >= 0) { segs.push([s, i]); s = -1; } }); if (s >= 0) segs.push([s, c.width]);
   segs = segs.filter(g => g[1] - g[0] > c.width / 40).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 5).sort((a, b) => a[0] - b[0]);
   for (const [a, b] of segs) { let top = c.height, bot = 0; for (let j = 0; j < c.height; j++) for (let i = a; i < b; i += 2) if (d[(j * c.width + i) * 4 + 3] > 0) { if (j < top) top = j; bot = j; break; } const o = document.createElement('canvas'); o.width = b - a; o.height = bot - top + 1; o.getContext('2d').drawImage(c, a, top, b - a, bot - top + 1, 0, 0, b - a, bot - top + 1); SELHEAD.push(o); }
-} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11211931'; }
+} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11211954'; }
 [1, 2, 3, 4].forEach(n => {
-  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11211931';
-  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11211931';
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11211954';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11211954';
 });
 
 // ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
@@ -559,7 +559,7 @@ function openCert() {
   ['touchstart', 'touchend', 'pointerdown'].forEach(n => d.addEventListener(n, e => e.stopPropagation(), { passive: true }));
   inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') d.querySelector('#cMake').click(); });
   d.querySelector('#cMake').onclick = () => { certName = inp.value.trim(); try { localStorage.setItem('pbh_name', certName); } catch (e) {} certCv = makeCert(certName); Audio8.sfx('select'); inp.blur(); };
-  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11211931'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
+  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11211954'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
   d.querySelector('#cBack').onclick = () => { d.remove(); certUI = null; goTitle(); };
 }
 function drawCertScreen() {

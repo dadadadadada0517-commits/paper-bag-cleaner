@@ -244,6 +244,8 @@ class Boss {
     if (this.kind === 'abo') { const d = this.dog; d.vx = 0; d.state = 'happy'; }
   }
   sprKey() {
+    const hurtK = { abo: 'a_hurt', lady: 'l_hurt', dogking: 'k_hurt' }[this.kind]; // 被打到：短暫換成受傷姿勢
+    if (!this.defeated && this.flash > 9 && hurtK && SPR.has(hurtK)) return hurtK;
     const f2 = Math.floor(this.t / 8) % 2, f8 = Math.floor(this.t / 5) % 8, f4 = Math.floor(this.t / 6) % 4;
     const air = !this.onGround && (this.state !== 'enter' || this.kind === 'lady' && this.y < this.floorY - this.h - 1);
     if (this.kind === 'abo') return this.defeated ? 'a_sorry' + f2 : this.throwT ? 'a_t' + (this.throwT > 8 ? 0 : this.throwT > 4 ? 1 : 2) : air ? (this.vy < 0 ? 'a_j0' : 'a_j1') : (this.anim || Math.abs(this.vx) > 0.1) ? 'a_walk' + f8 : 'a_stand';
