@@ -9,6 +9,7 @@ const FB = { burst: '#7fe6ff', zap: '#ffe36a', explode: '#ff8a2a', wave: '#5fd8f
 // 自製像素特效（特效庫在 2D 畫面上位置對不準，改用自己畫的）
 function cloud(x, y, vx, vy, r0, r1, life, c, g = 0) { G.parts.push({ x, y, vx, vy, life, max: life, c, s: 1, g, cloud: true, r0, r1 }); }
 function ring(x, y, r0, r1, life, c, flat = 0.4) { G.parts.push({ x, y, vx: 0, vy: 0, life, max: life, c, s: 1, g: 0, ring: true, r0, r1, flat }); }
+function fcPop(x, y, k = 1) { G.parts.push({ x, y, vx: 0, vy: 0, life: 16, max: 16, c: '#ffffff', s: 1, g: 0, fc: true, k }); } // FC 洛克人式白色爆散
 function FX(name, x, y, o = {}) {
   const sz = (o.opts && o.opts.size) || 0.4, col = (o.opts && o.opts.color) || FB[name] || '#fff', k = sz / 0.4;
   switch (name) {
@@ -606,11 +607,11 @@ class Enemy {
     if (isDog) { this.state = 'tamed'; this.st = 0; this.face = G.player.cx < this.cx ? 1 : -1; Audio8.sfx('tame'); floatText(this.cx, this.y - 8, '冷靜下來了～♥', '#ff9fc8'); G.tip('dog'); FX('heal', this.cx, this.y + this.h, { opts: { size: 0.4 } }); G.tamed++; return; }
     if (this.code === 'o') { this.state = 'sorry'; this.st = 0; this.face = G.player.cx < this.cx ? 1 : -1; Audio8.sfx('tame'); floatText(this.cx, this.y - 10, ['對不起！我會撿！', '下次會帶袋子…', '我錯了啦～'][this.variant], '#ffe18a'); FX('puff', this.cx, this.y + this.h / 2); G.tip('owner'); return; }
     this.dead = true;
-    if (this.code === 'R' || this.code === 'm') { FX('explode', this.cx, this.cy, { opts: { size: this.code === 'm' ? 0.5 : 0.4 } }); Audio8.sfx('pop'); Audio8.sfx('hit'); G.shake = 3; sparks(this.cx, this.cy, '#ffd23f', 12, 2.5, 0.12);
+    if (this.code === 'R' || this.code === 'm') { fcPop(this.cx, this.cy, 1.4); FX('explode', this.cx, this.cy, { opts: { size: this.code === 'm' ? 0.5 : 0.4 } }); Audio8.sfx('pop'); Audio8.sfx('hit'); G.shake = 3; sparks(this.cx, this.cy, '#ffd23f', 12, 2.5, 0.12);
       if (this.code === 'R') { for (const [k, dx] of [['star', -10], ['boba', 10]]) { const it = new Item(k, this.cx + dx, this.y + this.h, true); it.vy = -3; G.items.push(it); } floatText(this.cx, this.y - 12, '掃地機器人掉寶！絕招能量＋補血', '#ffe36a', true); Audio8.sfx('magic'); } }
     else if (this.code === 'u' || this.code === 's') { FX('venom', this.cx, this.y + this.h, { opts: { size: 0.4 }, life: 0.8 }); Audio8.sfx('squish'); const p = new Item('poop', this.cx, this.y + this.h, true); G.items.push(p); G.dynPoops++; floatText(this.cx, this.y - 6, '變回便便了！快沖掉！', '#ffd23f'); }
-    else if (this.code === 'b') { FX('puff', this.cx, this.cy, { opts: { size: 0.45, color: '#555a68' } }); Audio8.sfx('pop'); for (let i = 0; i < 2; i++) { const t = new Item('trash', this.cx + (i ? 8 : -8), this.y + this.h, true); t.vy = -2; G.items.push(t); G.dynPoops++; } }
-    else { FX('puff', this.cx, this.cy, { opts: { size: 0.35 } }); Audio8.sfx('pop'); }
+    else if (this.code === 'b') { fcPop(this.cx, this.cy); Audio8.sfx('pop'); for (let i = 0; i < 2; i++) { const t = new Item('trash', this.cx + (i ? 8 : -8), this.y + this.h, true); t.vy = -2; G.items.push(t); G.dynPoops++; } }
+    else { fcPop(this.cx, this.cy); Audio8.sfx('pop'); }
     if (Math.random() < 0.3) G.items.push(Object.assign(new Item(Math.random() < 0.85 ? 'egg' : 'boba', this.cx, this.y + this.h, true), { vy: -3 }));
   }
   sprKey() {

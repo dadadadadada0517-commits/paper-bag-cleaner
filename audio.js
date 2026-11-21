@@ -293,7 +293,7 @@ const Audio8 = (() => {
     boing() { tone('sine', 220, 660, 0.12, 0.25); },
   };
   // 外部音效（ElevenLabs 生成，放在 assets/sfx/<名稱>.mp3）優先，沒有就用合成音
-  const SFX_VOL = { blip: 0.5, step: 0.5, explode: 0.6, dash: 0.6, clink: 0.6, magic: 0.7 };
+  const SFX_VOL = { shoot: 1, victory: 1, getweapon: 1, cursor: 0.6, pop: 0.7, heal: 0.7, blip: 0.5, step: 0.5, explode: 0.6, dash: 0.6, clink: 0.6, magic: 0.7 };
   function loadExtSfx() {
     if (location.protocol === 'file:') return;
     fetch('sfx-list.json').then(r => r.ok ? r.json() : []).catch(() => []).then(list => list.forEach(n => fetch('sfx-' + n + '.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && ac.decodeAudioData(b)).then(buf => { if (buf) ext.sfx[n] = buf; }).catch(() => {})));
