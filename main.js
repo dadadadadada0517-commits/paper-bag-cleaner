@@ -141,9 +141,9 @@ function updateMumble() {
   if (G.heroSay && --G.heroSay.t <= 0) G.heroSay = null;
   if (P.slipT === 20) { G.heroSay = { text: '咦…我好像踩到了什麼…', t: 110 }; return; }
   if (--G.mumbleT > 0) return;
-  G.mumbleT = 1100 + Math.floor(rnd(0, 900));
+  G.mumbleT = 700 + Math.floor(rnd(0, 600));
   const near = G.items.filter(i => (i.type === 'poop' || i.type === 'big') && Math.abs(i.cx - P.cx) < 220).length;
-  const pool = ['我才不是大叔！我才 45 歲！', '我肚子好餓…等等去吃夜市。', '這邊也太髒了吧…'];
+  const pool = ['我才不是大叔！我才 45 歲！', '我肚子好餓…等等去吃夜市。', '這邊也太髒了吧…', '我好想下班…', '今天適合吃薑母鴨。', '我考卷還沒改完…', 'EMI 計畫還沒寫啊…', '今天的影片還沒做…', '我肚子好餓…', '我老婆又嫌我胖了…', '我痛風發作…'];
   if (near >= 3) pool.push('狗屎好多…到底是誰不撿！', '狗屎好多…', '狗屎好多…');
   if (G.clean / Math.max(1, G.level.total) > 0.5) pool.push('乾淨多了，心情真好！');
   G.heroSay = { text: pool[Math.floor(rnd(0, pool.length))], t: 130 };
