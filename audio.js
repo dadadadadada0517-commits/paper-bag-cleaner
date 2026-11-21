@@ -206,11 +206,11 @@ const Audio8 = (() => {
   }
   // 第一首開始播之後，背景依序把其他配樂抓進快取 → 之後換關、魔王戰音樂馬上就有
   function prefetchSongs() {
-    (async () => { for (const n of ['stage1', 'boss', 'stage2', 'stage3', 'stage4', 'witch', 'ending', 'title']) { try { await fetch('music-' + n + '.mp3'); } catch (e) {} } })();
+    (async () => { for (const n of ['stage1', 'boss', 'stage2', 'stage3', 'stage4', 'witch', 'ending', 'title']) { try { await fetch('music-' + n + '.mp3?v=11212022'); } catch (e) {} } })();
   }
   function unlockBgm() {
     const el = bgmEl(); if (el._unlocked) return; el._unlocked = true;
-    if (!el.src) { el.src = 'assets/music/title.mp3'; bgmName = 'title'; }
+    if (!el.src) { el.src = 'music-' + 'title' + '.mp3?v=11212022'; bgmName = 'title'; }
     el.muted = true; const p = el.play();
     const done = () => { if (ext.el !== el) el.pause(); el.muted = muted; };
     if (p && p.then) p.then(done, done); else done();
@@ -219,13 +219,13 @@ const Audio8 = (() => {
   function oneShot(name) {
     if (!ac) init();
     stopMusic(); curName = name;
-    const el = bgmEl(); el.loop = false; el.src = 'music-' + name + '.mp3'; bgmName = name;
+    const el = bgmEl(); el.loop = false; el.src = 'music-' + name + '.mp3?v=11212022'; bgmName = name;
     ext.el = el; el.muted = muted; el.volume = 0.9; el.currentTime = 0; el.play().catch(() => {});
   }
   function playEl(name) {
     const el = bgmEl(); el.loop = true;
     if (cur) { if (timer) clearInterval(timer); timer = null; cur = null; }
-    if (bgmName !== name) { el.src = 'music-' + name + '.mp3'; bgmName = name; } else el.currentTime = 0;
+    if (bgmName !== name) { el.src = 'music-' + name + '.mp3?v=11212022'; bgmName = name; } else el.currentTime = 0;
     ext.el = el; el.muted = muted; el.volume = 0; el.play().catch(() => {});
     clearInterval(fadeT); let v = 0; fadeT = setInterval(() => { v = Math.min(0.6, v + 0.06); el.volume = v; if (v >= 0.6 || ext.el !== el) clearInterval(fadeT); }, 40);
   }
@@ -308,7 +308,7 @@ const Audio8 = (() => {
   const SFX_VOL = { shoot: 1, victory: 1, getweapon: 1, cursor: 1, pop: 0.7, heal: 0.7, blip: 0.5, step: 0.5, explode: 0.6, dash: 0.6, clink: 0.6, magic: 0.7 };
   function loadExtSfx() {
     if (location.protocol === 'file:') return;
-    fetch('sfx-list.json').then(r => r.ok ? r.json() : []).catch(() => []).then(list => list.forEach(n => fetch('sfx-' + n + '.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && ac.decodeAudioData(b)).then(buf => { if (buf) ext.sfx[n] = buf; }).catch(() => {})));
+    fetch('sfx-list.json?v=11212022').then(r => r.ok ? r.json() : []).catch(() => []).then(list => list.forEach(n => fetch('sfx-' + n + '.mp3?v=11212022').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && ac.decodeAudioData(b)).then(buf => { if (buf) ext.sfx[n] = buf; }).catch(() => {})));
   }
   const playing = {};
   function stopSfx(...names) { for (const n of names) { for (const s of playing[n] || []) { try { s.stop(); } catch (e) {} } playing[n] = []; } }
