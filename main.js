@@ -36,7 +36,7 @@ addEventListener('resize', resize); resize();
 
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.png'; });
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
 function keyMagenta(img) {
