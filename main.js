@@ -113,8 +113,9 @@ function updateCameo() {
   } else {
     if (c.phase === 'in') { const tx = P.cx - c.dir * 30; c.x += (tx - c.x) * 0.06; c.y += (62 - c.y) * 0.06; if (Math.abs(tx - c.x) < 4) { c.phase = 'hover'; c.t = 0; c.say = '我來幫你！'; c.sayT = 110; Audio8.sfx('magic'); } }
     else if (c.phase === 'hover') { c.y = 62 + Math.sin(c.t / 10) * 2;
-      if (c.t === 25) { let n = 0; for (const e of G.enemies) if (!e.dead && e.code !== 'o' && e.code !== 'v' && e.state !== 'tamed' && e.x > G.camX - 10 && e.x < G.camX + VW + 10) { e.damage(99, null); n++; } if (G.intruder && G.intruder.state !== 'ko') { knockOut(G.intruder, C.name + '：滾開！'); n++; } G.flash = 6; Audio8.sfx('bigshot'); if (n) floatText(c.x, c.y + 24, C.name + '掃蕩！擊退 ' + n + ' 隻', '#ffe36a', true); }
+      if (c.t === 25) { let n = 0; for (const e of G.enemies) if (!e.dead && e.code !== 'o' && e.code !== 'v' && e.state !== 'tamed' && e.x > G.camX - 10 && e.x < G.camX + VW + 10) { e.damage(99, null); n++; } if (G.intruder && G.intruder.state !== 'ko') { if (G.intruder.kind === 'typhoon' && c.id === 's') { c.phase = 'blown'; c.t = 0; c.say = '哇啊啊～被吹走了！'; c.sayT = 80; G.intruder.say = '呼～～針筒超人吹走啦！'; G.intruder.sayT = 80; Audio8.sfx('gas'); } else { knockOut(G.intruder, C.name + '：滾開！'); n++; } } G.flash = 6; Audio8.sfx('bigshot'); if (n) floatText(c.x, c.y + 24, C.name + '掃蕩！擊退 ' + n + ' 隻', '#ffe36a', true); }
       if (c.t === 60) { c.phase = 'throw'; c.t = 0; } }
+    else if (c.phase === 'blown') { c.x += c.dir * -5; c.y -= 2; c.spin = (c.spin || 0) + 0.35; if (c.t > 80) G.cameo = null; }
     else if (c.phase === 'throw') {
       if (c.t === 6 || c.t === 14) { const r = Math.random(), type = c.t === 6 ? 'boba' : r < 0.6 ? 'star' : 'egg'; const it = new Item(type, c.x + c.dir * (c.t === 6 ? 6 : 18), c.y + 10, true); it.vy = -2; G.items.push(it); Audio8.sfx('throw'); FX('heal', c.x, c.y + 10, { opts: { size: 0.3 } }); }
       if (c.t > 24) { c.phase = 'out'; c.t = 0; }
@@ -128,7 +129,7 @@ function drawCameo(cam, back) {
   const key = c.gift && c.phase === 'hover' ? C.idle : c.gift && c.phase === 'throw' ? C.throw : C.fly + (Math.floor(c.t / 6) % 2);
   const s = SPR.f[key]; if (!s) return;
   const k = back ? 1.1 : 1.5;
-  ctx.save(); ctx.translate(Math.round(c.x - cam), Math.round(c.y)); ctx.scale(c.dir * k, k); if (back) ctx.globalAlpha = 0.92;
+  ctx.save(); ctx.translate(Math.round(c.x - cam), Math.round(c.y)); if (c.spin) ctx.rotate(c.spin); ctx.scale(c.dir * k, k); if (back) ctx.globalAlpha = 0.92;
   ctx.drawImage(s.img, -s.ax, -s.h / 2, s.w, s.h); ctx.restore();
   const onScr = c.x - cam > 10 && c.x - cam < VW - 10;
   if (c.sayT > 0 && onScr) G.cameoSay = { x: c.x, top: c.y - s.h * k / 2, bot: c.y + s.h * k / 2, text: C.name + '：' + c.say };
@@ -152,14 +153,24 @@ function drawHeroSay() {
   const s = G.heroSay; if (!s || !G.zc || G.dialog) return;
   const P = G.player, [x, y] = worldToScreen(P.cx, P.y - 16);
   sctx.globalAlpha = Math.min(1, s.t / 15);
-  drawBubble('ui_bubble', x, Math.max(44, y - 22), s.text, '#16233a', '#16111f');
+  drawBubble('ui_bubble', x, Math.max(44, y - 20), s.text, '#16233a', '#16111f', x);
   sctx.globalAlpha = 1;
 }
 // GPT 對話泡泡（沒有圖時用簡單框）
-function drawBubble(imgKey, cx, topY, text, color, fallbackBorder) {
+// 自己畫的像素對話框：箭頭永遠對準說話的人（tailX）
+function pixBubble(bx, by, w, h, tailX, border, fill, shade) {
+  const r = (x, y, ww, hh, c) => { sctx.fillStyle = c; sctx.fillRect(Math.round(x * K), Math.round(y * K), Math.round(ww * K), Math.round(hh * K)); };
+  r(bx + 2, by, w - 4, h, border); r(bx, by + 2, w, h - 4, border); r(bx + 1, by + 1, w - 2, h - 2, border);
+  r(bx + 2, by + 1, w - 4, h - 2, fill); r(bx + 1, by + 2, w - 2, h - 4, fill);
+  r(bx + 2, by + h - 3, w - 4, 2, shade); r(bx + 3, by + 2, 3, 1, '#9fd0ff');
+  const tx = Math.max(bx + 6, Math.min(bx + w - 6, tailX));
+  for (let i = 0; i < 5; i++) { const hw = 4 - i; r(tx - hw - 1, by + h - 1 + i, hw * 2 + 2, 1, border); if (hw > 0) r(tx - hw, by + h - 2 + i, hw * 2, 1, i ? fill : shade); }
+}
+function drawBubble(imgKey, cx, topY, text, color, fallbackBorder, tailX) {
   sctx.font = `${Math.round(7 * K)}px Cubic11, "Microsoft JhengHei", sans-serif`;
   const tw = sctx.measureText(text).width / K, w = tw + 22, h = 21;
   const bx = Math.max(4, Math.min(VW - w - 4, cx - w / 2));
+  if (tailX != null) { pixBubble(bx, topY, w, 14, tailX, '#16111f', '#ffffff', '#cfe6ff'); txt(text, bx + w / 2, topY + 3, 7, color, 'center', null); return h; }
   const im = UI[imgKey];
   if (im) sctx.drawImage(im, bx * K, topY * K, w * K, h * K);
   else box(bx, topY, w, 14, '#ffffff', fallbackBorder);

@@ -93,8 +93,10 @@ function updateHeroStrike(I) {
   const tx = I.x + I.w / 2, tyy = I.y + I.h / 2;
   if (!h.hit) {
     h.x += (tx - h.x) * 0.12; h.y += (tyy - h.y) * 0.12;
+    if (I.kind === 'typhoon' && h.id === 's' && Math.abs(tx - h.x) < 40 && I.state !== 'ko') { h.blown = true; h.hit = true; h.t = 0; I.say = '呼～～針筒超人吹走啦！'; I.sayT = 80; Audio8.sfx('gas'); floatText(h.x, h.y - 10, '針筒超人：哇啊啊～被吹走了！', '#9fd0ff', true); return; }
     if (Math.abs(tx - h.x) < 10 && I.state !== 'ko') { h.hit = true; h.t = 0; knockOut(I, (h.id === 'm' ? '中央山脈超人' : '針筒超人') + '：滾開！別妨礙小編！'); I.vx = Math.sign(tx - (h.x - h.from * 20)) * 5 || 5; G.flash = 4; }
-  } else { h.x += -h.from * 4; h.y -= 2; if (h.t > 60) I.hero = null; }
+  } else if (h.blown) { h.x += (h.x < tx ? -1 : 1) * 5; h.y -= 2.5; h.spin = (h.spin || 0) + 0.4; if (h.t > 70) I.hero = null; }
+  else { h.x += -h.from * 4; h.y -= 2; if (h.t > 60) I.hero = null; }
 }
 
 function drawIntruder(cam) {
@@ -111,13 +113,13 @@ function drawIntruder(cam) {
   if (I.flash) SPR.draw(ctx, k, cx, feet, face, true, 0.8);
   ctx.restore();
   const h = I.hero;
-  if (h) { const s = SPR.f[h.id === 'm' ? 'cm_throw' : 'cs_throw']; if (s) { ctx.save(); ctx.translate(Math.round(h.x - cam), Math.round(h.y)); ctx.scale(h.hit ? -h.from * 1.4 : -h.from * 1.4, 1.4); ctx.drawImage(s.img, -s.ax, -s.h / 2, s.w, s.h); ctx.restore(); } }
+  if (h) { const s = SPR.f[h.id === 'm' ? 'cm_throw' : 'cs_throw']; if (s) { ctx.save(); ctx.translate(Math.round(h.x - cam), Math.round(h.y)); if (h.spin) ctx.rotate(h.spin); ctx.scale(h.hit ? -h.from * 1.4 : -h.from * 1.4, 1.4); ctx.drawImage(s.img, -s.ax, -s.h / 2, s.w, s.h); ctx.restore(); } }
 }
 function drawIntruderSay() {
   const I = G.intruder; if (!I || !I.sayT || !G.zc) return;
   const [x, y] = worldToScreen(I.x + I.w / 2, I.y);
   if (x < 10 || x > VW - 10) return;
   sctx.globalAlpha = Math.min(1, I.sayT / 12);
-  drawBubble('ui_bubble', x, Math.max(30, y - 24), INTRUDERS[I.kind].name + '：' + I.say, '#3a1010', '#d23a3a');
+  drawBubble('ui_bubble', x, Math.max(30, y - 22), INTRUDERS[I.kind].name + '：' + I.say, '#3a1010', '#d23a3a', x);
   sctx.globalAlpha = 1;
 }
