@@ -254,7 +254,7 @@ function loadLevel(n) {
   const t = D.map.map(r => r.split(''));
   const L = { def: D, theme: D.theme, w: t[0].length, h: t.length, t, gateOpen: false, gateAnim: 0, yoku: [], tt: 0 };
   G.tipQ = []; G.tipsShown = new Set(); G.curTip = null;
-  G.cameo = null; G.heroSay = null; G.cameoTimer = 1500; G.mumbleT = 500;
+  G.cameo = null; G.heroSay = null; G.cameoTimer = 1500; G.mumbleT = 500; G.intruder = null; G.intruderTimer = 2100;
   Object.assign(G, { splashes: [], ultraBeam: null, ultraWave: null, ultraAura: 0, ultraLift: 0, parts: [], texts: [], bullets: [], eshots: [], items: [], enemies: [], npcs: [], platforms: [], boss: null, clean: 0, dynPoops: 0, checkpoint: null, dark: 0, freeze: false });
   if (window.VFX) VFX.clear();
   let total = 0, start = { x: 40, y: 176 }, npcI = 0, yokuCells = [];
@@ -626,7 +626,7 @@ function worldUpdate(cutscene) {
   if (G.warnT > 0) G.warnT--;
   if (G.cutin) G.cutin.t++;
   if (G.curTip) G.curTip.t++;
-  if (G.level) { updateCameo(); updateMumble(); }
+  if (G.level) { updateCameo(); updateMumble(); if (typeof updateIntruder === 'function') updateIntruder(); }
 }
 
 // ---------- 繪製：世界 ----------
@@ -788,7 +788,7 @@ function drawWorld() {
   for (const n of G.npcs) if (Math.abs(n.x - cam - 200) < 230) n.draw(ctx, cam);
   for (const e of G.enemies) if (Math.abs(e.x - cam - 200) < 240) e.draw(ctx, cam);
   if (G.boss) G.boss.draw(ctx, cam);
-  drawCameo(cam, false);
+  drawCameo(cam, false); if (typeof drawIntruder === 'function') drawIntruder(cam);
   // 變暗（絕招／魔王出場）：放在主角與特效之前，讓主角與特效保持明亮
   if (G.dark > 0) { ctx.fillStyle = `rgba(10,0,20,${G.dark * 0.6})`; ctx.fillRect(0, 0, VW, VH); }
   if (window.VFX && !G.lowFx) VFX.draw(ctx, cam, 0, 'back');
@@ -1224,7 +1224,7 @@ function render() {
   const lbT = G.dialog || m === 'bossIntro' || m === 'gate' || m === 'absorb' || m === 'bossDown' ? 1 : 0;
   G.letterbox += (lbT - G.letterbox) * 0.15;
   if (G.letterbox > 0.01) { sctx.fillStyle = '#000'; sctx.fillRect(0, 0, screen.width, 16 * K * G.letterbox); sctx.fillRect(0, screen.height - 16 * K * G.letterbox, screen.width, 16 * K * G.letterbox); }
-  drawTexts(); drawCameoSay(); drawHeroSay();
+  drawTexts(); drawCameoSay(); if (typeof drawIntruderSay === 'function') drawIntruderSay(); drawHeroSay();
   if (m !== 'ultra' && G.letterbox < 0.5) { drawHUD(); drawTip(); }
   if (G.warnT > 0 && (G.warnT >> 3) % 2) { sctx.fillStyle = 'rgba(200,0,30,0.35)'; sctx.fillRect(0, 0, VW * K, VH * K); if (!uiImg('ui_warning', 200, 104, 300)) { sctx.fillStyle = 'rgba(200,0,30,0.75)'; sctx.fillRect(0, 90 * K, VW * K, 40 * K); txt('⚠ WARNING ⚠', 200, 96, 18, '#fff', 'center', '#600'); } txt(G.level.def.bossName + ' 出現！', 200, 136, 10, '#ffe', 'center', '#600'); }
   if (m === 'ready' && (G.readyT >> 3) % 2) { if (!uiImg('ui_ready', 200, 104, 130)) txt('READY', 200, 100, 20, '#fff', 'center'); }
