@@ -1076,10 +1076,11 @@ function drawTitle() {
   txt('M：靜音　F：特效品質　' + (window.VFX ? '特效庫：00GameDevs ✔' : '特效：簡易（請用 http 開啟）'), 200, 212, 7, '#9aa', 'center');
 }
 function drawHelp() {
-  box(40, 70, 320, 140, 'rgba(10,12,28,0.95)');
-  const L = [['← →', '移動'], ['↑ ↓', '爬梯子／與人對話'], ['Z 或 K', '跳躍（空中再按＝二段跳）'], ['X 或 J', '水槍射擊（按住＝蓄力水砲）'], ['C 或 L', '吸塵衝刺'], ['A 或 U', '大絕招「全城大掃除」（能量滿時）'], ['Enter', '暫停選單']];
-  L.forEach(([k, v], i) => { txt(k, 60, 82 + i * 15, 9, '#ffe36a'); txt(v, 130, 82 + i * 15, 9, '#fff'); });
-  txt('沖掉便便、撿起垃圾，清潔度達標才能挑戰魔王！', 200, 192, 8, '#9ff3ff', 'center');
+  box(30, 72, 340, 150, 'rgba(10,12,28,0.95)');
+  const L = [['← →', '移動'], ['↑ ↓', '爬梯子／與人對話'], ['Z 或 K', '跳躍（空中再按＝二段跳）'], ['X 或 J', '射擊（按住＝集氣，魔王武器也能集氣）'], ['S 或 I', '切換魔王武器'], ['C 或 L', '吸塵衝刺'], ['A 或 U', '大絕招「全城大掃除」（能量滿時）'], ['Enter', '暫停選單']];
+  L.forEach(([k, v], i) => { txt(k, 48, 79 + i * 13, 8.5, '#ffe36a'); txt(v, 112, 79 + i * 13, 8.5, '#fff'); });
+  txt('武器能量：沖掉便便 +1、撿「清潔劑」+10（打倒小怪會掉）', 200, 186, 7.5, '#7fd7ff', 'center');
+  txt('沖掉便便、撿起垃圾，清潔度達標才能挑戰魔王！', 200, 201, 7.5, '#9ff3ff', 'center');
 }
 function drawSelect() {
   // 原本的星空背景＋洛克人式十字排列：左／上／右＝三個關卡，下＝豪鬼主任，中間＝小編
@@ -1147,7 +1148,7 @@ function drawSelect() {
   if (!uiImg('ui_get', 200, 22, 230 * (2 - s0), s0)) { txt('獲得新能力！', 200, 10, 16, ab.color, 'center'); }
   // 能力清單（GPT 文字圖，沒有就用文字）
   const rows = [];
-  if (info.weapon) rows.push(['ui_w_' + info.weapon, WEAPONS[info.weapon].name, WEAPONS[info.weapon].color, WEAPONS[info.weapon].desc + '（S 鍵切換）']);
+  if (info.weapon) rows.push(['ui_w_' + info.weapon, WEAPONS[info.weapon].name, WEAPONS[info.weapon].color, WEAPONS[info.weapon].desc + '（S 鍵切換，按住射擊可集氣；能量用完就沖便便或撿清潔劑補充）']);
   for (const p of info.passives) rows.push(['ui_ab_' + p, ABILITIES[p].name, ABILITIES[p].color, ABILITIES[p].desc.join('')]);
   if (info.lvUp) rows.push([null, '水槍強化 Lv.' + (info.lv + 1), '#7fe6ff', '水柱變大、威力提升、可同時發射 ' + (3 + info.lv) + ' 發！']);
   // 右側：能力清單（GPT 標題圖＋自動換行說明，不互相重疊）
@@ -1159,8 +1160,8 @@ function drawSelect() {
     if (im) { bh = bw * im.height / im.width; sctx.globalAlpha = pop; sctx.drawImage(im, 196 * K, yy * K, bw * K, bh * K); sctx.globalAlpha = 1; }
     else txt(r[1], 200, yy + 2, 12, r[2], 'left');
     const lines = wrap(r[3], 180, 7.5);
-    lines.slice(0, 3).forEach((l, j) => txt(l, 200, yy + bh + 2 + j * 10, 7.5, '#fff', 'left'));
-    yy += bh + 6 + Math.min(3, lines.length) * 10;
+    lines.slice(0, 4).forEach((l, j) => txt(l, 200, yy + bh + 2 + j * 10, 7.5, '#fff', 'left'));
+    yy += bh + 6 + Math.min(4, lines.length) * 10;
   });
   // 左側：小編開心跳躍歡呼
   const ks = ['h_cheer', 'h_win', 'h_thumb'], key = ks[Math.floor(t / 24) % 3], s = SPR.f[key] || SPR.f.h_win;
