@@ -37,6 +37,13 @@
     b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
   });
   addEventListener('resize', () => { if (jid === null) reset(); });
+  // iPhone：連點不會放大畫面（Safari 會忽略 user-scalable=no，要自己擋）
+  const stop = e => { if (e.cancelable) e.preventDefault(); };
+  T.addEventListener('touchstart', stop, { passive: false }); T.addEventListener('touchend', stop, { passive: false });
+  screen.addEventListener('touchend', stop, { passive: false });
+  document.addEventListener('dblclick', stop, { passive: false });
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(n => document.addEventListener(n, stop, { passive: false }));
+  let lastEnd = 0; document.addEventListener('touchend', e => { const now = Date.now(); if (now - lastEnd < 350) stop(e); lastEnd = now; }, { passive: false });
   reset();
 
   // 絕招能用時變色發光；「換」顯示目前武器顏色

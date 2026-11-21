@@ -19,6 +19,7 @@ function syncAbilities() {
 G.refillAmmo = () => { for (const w of G.weapons) G.ammo[w] = 28; };
 G.ammoGain = (n) => { for (const w of G.weapons) if (w !== 'water') G.ammo[w] = Math.min(28, (G.ammo[w] || 0) + n); };
 const QS = new URLSearchParams(location.search);
+const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 // ---------- 畫布 ----------
 const screen = document.getElementById('screen'), sctx = screen.getContext('2d');
@@ -1083,10 +1084,11 @@ function drawTitle() {
   const g = sctx.createLinearGradient(0, 120 * K, 0, VH * K); g.addColorStop(0, 'rgba(7,8,15,0)'); g.addColorStop(1, 'rgba(7,8,15,0.92)'); sctx.fillStyle = g; sctx.fillRect(0, 0, VW * K, VH * K);
   const bob = Math.sin(G.t / 30) * 2;
   if (!uiImg('ui_logo', 200, 42 + bob, 250)) { txt('小編出擊！', 200, 18 + bob, 34, '#ffe36a', 'center', '#5a1d00'); txt('維護環境 你我一起來！', 200, 58 + bob, 9, '#fff', 'center'); }
-  if (G.mode === 'boot') { if ((G.t >> 5) % 2) txt('按任意鍵開始（Enter / Z）', 200, 180, 11, '#fff', 'center'); return; }
+  if (G.mode === 'boot') { if ((G.t >> 5) % 2) txt(IS_TOUCH ? '點一下畫面開始' : '按任意鍵開始（Enter / Z）', 200, 180, 11, '#fff', 'center'); return; }
   if (G.mode === 'help') { drawHelp(); return; }
   const opts = titleOptions();
   opts.forEach((o, i) => txt((i === G.menu ? '▶ ' : '　') + o[0], 150, 150 + i * 16, 11, i === G.menu ? '#ffe36a' : '#ddd'));
+  if (IS_TOUCH) txt('蘑菇頭上下選擇，按綠色「射」確定', 200, 198, 8, '#7dffa0', 'center');
   txt('M：靜音　F：特效品質　手機請橫放，左邊蘑菇頭移動', 200, 212, 7, '#9aa', 'center');
 }
 function drawHelp() {
@@ -1101,6 +1103,7 @@ function drawSelect() {
   sctx.fillStyle = '#0b0d1e'; sctx.fillRect(0, 0, screen.width, screen.height);
   for (let i = 0; i < 60; i++) { const x = (i * 83 + G.t * (1 + i % 3) * 0.3) % VW, y = (i * 41) % VH; sctx.fillStyle = i % 5 ? '#4a4f7a' : '#fff'; sctx.fillRect(x * K, y * K, K, K); }
   txt('STAGE SELECT', 200, 4, 13, '#ffe36a', 'center');
+  txt(IS_TOUCH ? '用蘑菇頭選關卡，按綠色「射」確定' : '方向鍵選關卡，按 Z 或 X 確定', 200, 21, 7, '#9ff3ff', 'center');
   const F = 48, P = [[96, 118], [200, 52], [304, 118], [200, 184]], C = [200, 118];
   // 中心到四格的連接光帶
   for (const [x, y] of P) { sctx.strokeStyle = 'rgba(127,230,255,0.25)'; sctx.lineWidth = 3 * K; sctx.beginPath(); sctx.moveTo(C[0] * K, C[1] * K); sctx.lineTo(x * K, y * K); sctx.stroke(); }
@@ -1123,7 +1126,7 @@ function drawSelect() {
     else portrait('hero', x, y, F, false);
     txt('小編', C[0], y + F + 4, 7, '#7fe6ff', 'center'); }
   const D = LEVEL_DATA[G.sel];
-  txt(D.name, 40, 196, 8, '#ffffff', 'center'); txt(stageUnlocked(G.sel + 1) ? 'Z 出發' : '打倒三個魔王解鎖', 40, 208, 6, '#aab', 'center');
+  txt(D.name, 40, 196, 8, '#ffffff', 'center'); txt(stageUnlocked(G.sel + 1) ? (IS_TOUCH ? '按「射」出發' : 'Z 出發') : '打倒三個魔王解鎖', 40, 208, 6, '#aab', 'center');
   txt('水槍 Lv.' + (G.gunLv + 1), 360, 196, 7, '#9ff3ff', 'center');
   if (save.cleared.length && G.sel < 3) txt('魔王互相克制！', 360, 208, 6, '#ffd23f', 'center');
 }function drawStageCard() {
