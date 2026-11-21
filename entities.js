@@ -113,7 +113,7 @@ class Player {
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
   hurt(dmg, fromX, msg) {
-    if (this.inv > 0 || this.dead || this.dashT > 0 && G.abilities.dash) return false;
+    if (this.inv > 0 || this.dead || G.mode === 'ready' || this.dashT > 0 && G.abilities.dash) return false;
     this.hp -= dmg; Audio8.sfx('hurt'); G.shake = 6;
     if (msg) floatText(this.cx, this.y - 6, msg, '#ff8a8a');
     this.climbing = false; this.charge = 0;

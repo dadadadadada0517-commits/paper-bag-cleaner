@@ -571,7 +571,7 @@ function worldUpdate(cutscene) {
   if (!frozenWorld) {
     for (const b of G.bullets) b.update();
     for (const it of G.items) it.update();
-    if (!cutscene || G.mode === 'ultraFire') for (const e of G.enemies) if (Math.abs(e.cx - G.camX - 200) < 280 || e.state === 'tamed') e.update();
+    if (!cutscene || G.mode === 'ultraFire' || G.mode === 'ready') for (const e of G.enemies) if (Math.abs(e.cx - G.camX - 200) < 280 || e.state === 'tamed') e.update();
     for (const n of G.npcs) n.update();
     if (G.boss) { if (G.mode === 'boss' || G.boss.defeated) G.boss.update(); }
     for (const s of G.eshots) s.update();
