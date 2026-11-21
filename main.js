@@ -50,7 +50,34 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.png'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.png'; });
+// 宣導標語：解決狀況時在畫面上方滑入（每關每種只出現一次）
+const TIPS = {
+  poop: '遛狗不撿狗便便，依《廢棄物清理法》\n可罰新台幣 1,200～6,000 元！',
+  big: '狗便便含寄生蟲和細菌，雨水沖進水溝\n會污染環境、傳播疾病！',
+  trash: '亂丟垃圾、菸蒂，依《廢棄物清理法》\n可罰新台幣 1,200～6,000 元！',
+  trash2: '垃圾堆積會孳生蚊蠅、蟑螂和老鼠，\n還會傳播登革熱等疾病！',
+  dog: '遛狗請繫牽繩、隨身帶袋子，\n保護人狗安全，也讓社區更乾淨！',
+  owner: '飼主責任：狗便便請自己清，\n用袋子撿起、丟進垃圾桶！',
+  fine: '踩到狗便便很危險會滑倒！\n不清理的飼主可罰 1,200～6,000 元！',
+  vent: '垃圾塞住水溝會發臭，下大雨還會淹水！\n水溝保持暢通，人人有責！',
+  check: '維護環境 你我一起來！',
+};G.tipQ = []; G.tipsShown = new Set();
+G.tip = (key) => { if (!TIPS[key] || G.tipsShown.has(key)) return; G.tipsShown.add(key); G.tipQ.push(TIPS[key]); };
+function drawTip() {
+  if (!G.curTip && G.tipQ.length) G.curTip = { text: G.tipQ.shift(), t: 0 };
+  const c = G.curTip; if (!c) return;
+  if (c.t > 260) { G.curTip = null; return; }
+  const inK = Math.min(1, c.t / 12), outK = c.t > 240 ? (c.t - 240) / 20 : 0, y = 32 - (1 - inK) * 50 - outK * 50;
+  const im = UI.ui_tipbanner, w = 250, h = im ? w * im.height / im.width : 34;
+  sctx.globalAlpha = 1 - outK;
+  if (im) sctx.drawImage(im, (200 - w / 2) * K, y * K, w * K, h * K); else box(50, y, 300, 26, '#fff8e0', '#2f9e8a');
+  const ls = c.text.split('\n'); ls.forEach((l, i) => txt(l, 213, y + h / 2 - ls.length * 4.5 + i * 9, 7.5, '#3a2410', 'center', null));
+  sctx.globalAlpha = 1;
+}
+// GPT 中景圖（洋紅底去背）
+const MIDIMG = {};
+[1, 2, 3, 4].forEach(n => { const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.png'; });
 // 在畫面座標（遊戲單位）置中畫一張 UI 圖，寬度 w
 function uiImg(k, cx, cy, w, alpha = 1) { const c = UI[k]; if (!c) return false; const h = w * c.height / c.width; sctx.globalAlpha = alpha; sctx.drawImage(c, (cx - w / 2) * K, (cy - h / 2) * K, w * K, h * K); sctx.globalAlpha = 1; return true; }
 const PORTRAIT = { hero: 'p_hero', witch: 'p_witch', abo: 'p_abo', lady: 'p_lady', dogking: 'p_dogking', chief: 'p_chief', kid: 'p_kid' };
@@ -105,7 +132,7 @@ function stepScript() {
 }
 function* talk(lines) {
   for (const l of lines) {
-    const [who, name, text] = l.length === 3 ? l : [l[0] === '阿編' ? 'hero' : l[0] === '小學生' ? 'kid' : 'chief', l[0], l[1]];
+    const [who, name, text] = l.length === 3 ? l : [l[0] === '小編' ? 'hero' : l[0] === '小學生' ? 'kid' : 'chief', l[0], l[1]];
     G.dialog = { who, name, text, shown: 0, t: 0 };
     yield () => G.dialog === null;
   }
@@ -131,6 +158,7 @@ function loadLevel(n) {
   const D = LEVEL_DATA[n - 1];
   const t = D.map.map(r => r.split(''));
   const L = { def: D, theme: D.theme, w: t[0].length, h: t.length, t, gateOpen: false, gateAnim: 0, yoku: [], tt: 0 };
+  G.tipQ = []; G.tipsShown = new Set(); G.curTip = null;
   Object.assign(G, { splashes: [], ultraBeam: null, ultraWave: null, ultraAura: 0, ultraLift: 0, parts: [], texts: [], bullets: [], eshots: [], items: [], enemies: [], npcs: [], platforms: [], boss: null, clean: 0, dynPoops: 0, checkpoint: null, dark: 0, freeze: false });
   if (window.VFX) VFX.clear();
   let total = 0, start = { x: 40, y: 176 }, npcI = 0, yokuCells = [];
@@ -162,7 +190,7 @@ function loadLevel(n) {
   for (let x = 0; x < L.w; x++) if (t[9][x] === 'G') { L.gateX = x; break; }
   L.arena = { x0: L.gateX * TS + TS, x1: (L.gateX + 24) * TS };
   G.arena = L.arena;
-  L.total = total; L.req = Math.ceil(total * 0.6);
+  L.total = total; L.req = Math.ceil(total * 0.5);
   G.level = L; LV = L;
   G.player = new Player(start.x, start.y); G.start = start;
   G.camX = 0; G.stage = n; G.time = 0; G.deathsStage = 0;
@@ -217,9 +245,11 @@ function* bossSequence() {
   for (let i = 30; i >= 0; i--) { L.gateAnim = i / 30; yield 1; }
   G.mode = 'bossIntro';
   // 魔王出場動畫：先試 Grok 生成的影片，沒有就用遊戲內動畫
-  yield* playVideo('video-boss' + G.stage + '.mp4', 10);
   Audio8.sfx('siren'); G.warnT = 120; yield 60;
   G.boss = new Boss(D.boss, L.bossSpawn.x, L.arena && 11 * TS);
+  // 魔王眼部特寫橫帶
+  G.cutin = { t: 0, who: D.boss, name: D.bossName, sub: 'BOSS', dur: 70, color: '#ff5a8a', y: 70 }; Audio8.sfx('stomp');
+  yield () => G.cutin.t > 70; G.cutin = null;
   yield () => G.boss.entrance();
   yield* talk(D.intro);
   // 血條充填
@@ -290,7 +320,7 @@ function ultimate() {
   run((function* () {
     const prev = G.mode, P = G.player;
     G.mode = 'ultra'; G.ultraT = 0; P.frozen = true; G.ultra = 0; Audio8.sfx('siren');
-    // ① 集氣：畫面變暗、阿編微微浮起、背後 GPT 能量氣焰、光點往身上聚
+    // ① 集氣：畫面變暗、小編微微浮起、背後 GPT 能量氣焰、光點往身上聚
     G.ultraAura = 1; Audio8.sfx('ultcharge');
     for (let i = 0; i < 60; i++) {
       G.dark = Math.min(0.85, i / 30); G.ultraLift = Math.min(6, i / 6);
@@ -299,8 +329,8 @@ function ultimate() {
       G.shake = i / 30; yield 1;
     }
     // ② 特寫切入（有 Grok 影片就播影片，否則用 GPT 特寫圖）
-    const usedVideo = yield* playVideo('video-ultimate.mp4', 6);
-    if (!usedVideo) { G.cutin = { t: 0 }; Audio8.sfx('charge2'); yield () => G.cutin.t > 96; G.cutin = null; }
+    G.cutin = { t: 0, who: 'hero', name: '全城大掃除！！', sub: '小編 ─ 清潔奧義', dur: 80, color: '#7fe6ff', y: 96 }; Audio8.sfx('charge2');
+    yield () => G.cutin.t > 80; G.cutin = null;
     // ③ GPT 巨大水砲：從槍口延伸到畫面邊緣，沿路依序沖掉便便、打倒敵人
     G.mode = 'ultraFire'; G.flash = 12; G.shake = 14; Audio8.sfx('ultfire'); Audio8.sfx('bigshot');
     const dir = P.face, gx = P.cx + dir * 18, gy = P.y + 10 - G.ultraLift;
@@ -501,6 +531,7 @@ function worldUpdate(cutscene) {
   if (G.heroGlow > 0) G.heroGlow--;
   if (G.warnT > 0) G.warnT--;
   if (G.cutin) G.cutin.t++;
+  if (G.curTip) G.curTip.t++;
 }
 
 // ---------- 繪製：世界 ----------
@@ -508,11 +539,25 @@ function drawBackground() {
   const L = G.level, D = L.def, cam = G.camX;
   const gr = ctx.createLinearGradient(0, 0, 0, VH); gr.addColorStop(0, D.sky[0]); gr.addColorStop(1, D.sky[1]);
   ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
-  const bg = IMG[D.bg];
+  const bg = IMG[D.bg], fx25 = !G.lowFx;
   if (bg) {
-    const h = 250, w = Math.round(bg.width * h / bg.height), off = Math.floor(cam * 0.2) % w;
-    for (let x = -off; x < VW; x += w) ctx.drawImage(bg, x, -14, w, h);
+    // 遠景：景深模糊＋輕微放大（2.5D 景深感）
+    if (fx25) ctx.filter = 'blur(2.5px)';
+    const h = 262, w = Math.round(bg.width * h / bg.height), off = Math.floor(cam * 0.15) % w;
+    for (let x = -off - 4; x < VW; x += w) ctx.drawImage(bg, x, -22, w, h);
+    ctx.filter = 'none';
   }
+  // GPT 中景（填滿遠景與地面之間）：視差 0.6、輕微景深
+  const mg = MIDIMG[L.theme];
+  if (mg) {
+    if (fx25) ctx.filter = 'blur(0.6px)';
+    const h = 104, w = Math.round(mg.width * h / mg.height), off = Math.floor(cam * 0.6) % w;
+    for (let x = -off - 1; x < VW; x += w - 1) ctx.drawImage(mg, x, 178 - h, w, h);
+    ctx.filter = 'none';
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(0, 172, VW, 4);
+    return;
+  }
+  if (fx25) ctx.filter = 'blur(1px)';
   // 中景（視差 0.5）
   const mid = cam * 0.5, th = L.theme;
   if (th === 1) {
@@ -530,10 +575,68 @@ function drawBackground() {
     for (let i = 0; i < 30; i++) { const x = (i * 97 + 13) % VW, y = (i * 53) % 110; if ((G.t + i * 13) % 90 < 60) { ctx.fillStyle = '#fff'; ctx.fillRect(x, y, 1, 1); if ((G.t + i * 13) % 90 < 10) { ctx.fillRect(x - 1, y, 3, 1); ctx.fillRect(x, y - 1, 1, 3); } } }
     for (let i = -1; i < 10; i++) { const x = i * 48 - (mid % 48); ctx.fillStyle = '#2b2f55'; ctx.fillRect(x, 160, 2, 16); ctx.fillRect(x, 160, 48, 2); ctx.fillRect(x + 24, 162, 2, 14); }
   }
+  ctx.filter = 'none';
+  if (fx25) drawFloor25(L, cam);
+}
+// 2.5D 透視地板：地面往畫面深處延伸（Mode-7 掃描線）
+const floorPat = {};
+function drawFloor25(L, cam) {
+  const th = L.theme, key = th;
+  let p = floorPat[key];
+  if (!p) {
+    const s = SPR.f[`t${th}f`], g = SPR.f[`t${th}g`]; if (!s || !g) return;
+    const c = PX.canvas(32, 32), x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    // 用地表（草／磚）上緣當地板材質
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) x.drawImage(g.img, 0, 0, g.img.width, g.img.height * 0.45, i * 16, j * 16, 16, 16);
+    p = floorPat[key] = ctx.createPattern(c, 'repeat');
+  }
+  const hz = 112, y0 = 146, y1 = 176;
+  for (let y = y0; y < y1; y++) {
+    const d = y - hz, s = d / (y1 - hz), row = (900 / d) % 16;
+    p.setTransform(new DOMMatrix().translate(VW / 2 - (cam + VW / 2) * s, y - row * s).scale(s, s));
+    ctx.fillStyle = p; ctx.fillRect(0, y, VW, 1);
+  }
+  // 遠處霧化
+  const fog = ctx.createLinearGradient(0, y0, 0, y1); fog.addColorStop(0, L.def.sky[1]); fog.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.75; ctx.fillStyle = fog; ctx.fillRect(0, y0, VW, y1 - y0); ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, y1 - 2, VW, 2);
+}
+// 2.5D 方塊頂面：地表／平台往後延伸的頂面，會依畫面位置朝消失點傾斜
+function drawTopFaces(L, cam) {
+  const th = L.theme, x0 = Math.floor(cam / TS), x1 = Math.min(L.w - 1, x0 + 26), D = 6;
+  const top = { 1: ['#7ed36a', '#5aa84c'], 2: ['#c96a52', '#9c4a38'], 3: ['#78a05c', '#557a42'], 4: ['#b8c2d8', '#8a96b0'] }[th];
+  for (let ty = 1; ty < L.h; ty++) for (let tx = x0; tx <= x1; tx++) {
+    const c = L.t[ty][tx]; if (!'#=-^'.includes(c)) continue;
+    const above = L.t[ty - 1][tx]; if ('#=^G'.includes(above)) continue;
+    const x = tx * TS - cam, y = ty * TS + (c === '^' ? 4 : 0);
+    const k = 0.05, dxL = (x - VW / 2) * k, dxR = (x + TS - VW / 2) * k;
+    ctx.fillStyle = top[(tx + ty) % 2]; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + TS, y); ctx.lineTo(x + TS - dxR * D / TS, y - D); ctx.lineTo(x - dxL * D / TS, y - D); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x - dxL * D / TS, y - D, TS, 1);
+  }
+}
+// 角色腳下影子
+function shadowAt(o, cam, w) {
+  if (!o || o.dead) return;
+  let fy = null; const tx = Math.floor((o.x + o.w / 2) / TS);
+  for (let ty = Math.floor((o.y + o.h) / TS); ty < G.level.h; ty++) if (isSolid(tx, ty) || isOneWay(tx, ty)) { fy = ty * TS; break; }
+  if (fy == null) return;
+  const dist = fy - (o.y + o.h), k = Math.max(0.3, 1 - dist / 90);
+  ctx.fillStyle = `rgba(0,0,0,${0.32 * k})`; ctx.beginPath(); ctx.ellipse(o.x + o.w / 2 - cam, fy - 1, (w || o.w * 0.8) * k, 3 * k, 0, 0, 7); ctx.fill();
 }
 function drawTiles() {
   const L = G.level, th = L.theme, S = PX.S, cam = Math.floor(G.camX);
   const x0 = Math.floor(cam / TS), x1 = Math.min(L.w - 1, x0 + 26);
+  // 掉落洞口：畫成深淵（中景底下不再露出遠景），兩側加土壁陰影
+  const pitTop = { 1: ['#3a2614', '#0a0604'], 2: ['#2a1d2e', '#05030a'], 3: ['#2c4a1e', '#061006'], 4: ['#1c1f3a', '#020208'] }[th];
+  for (let tx = x0; tx <= x1; tx++) {
+    if (L.t[L.h - 1][tx] !== '.' && L.t[L.h - 1][tx] !== 'Y') continue;
+    const x = tx * TS - cam, top = 11 * TS - 6;
+    const gr = ctx.createLinearGradient(0, top, 0, VH); gr.addColorStop(0, pitTop[0]); gr.addColorStop(0.35, pitTop[1]); gr.addColorStop(1, '#000');
+    ctx.fillStyle = gr; ctx.fillRect(x, top, TS, VH - top);
+    if (th === 3) { ctx.fillStyle = 'rgba(120,210,60,0.55)'; ctx.fillRect(x, VH - 14 + Math.sin((G.t + tx * 9) / 14) * 1.5, TS, 14); }
+    if ('#^'.includes(L.t[11][tx - 1] || '.')) { const g2 = ctx.createLinearGradient(x, 0, x + 6, 0); g2.addColorStop(0, 'rgba(0,0,0,0.55)'); g2.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g2; ctx.fillRect(x, top, 6, VH - top); }
+    if ('#^'.includes(L.t[11][tx + 1] || '.')) { const g2 = ctx.createLinearGradient(x + TS, 0, x + TS - 6, 0); g2.addColorStop(0, 'rgba(0,0,0,0.55)'); g2.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g2; ctx.fillRect(x + TS - 6, top, 6, VH - top); }
+  }
   for (let ty = 0; ty < L.h; ty++) for (let tx = x0; tx <= x1; tx++) {
     const c = L.t[ty][tx]; if (c === '.') continue;
     const x = tx * TS - cam, y = ty * TS, v = Math.floor(PX.hash(tx, ty) * 4);
@@ -576,7 +679,8 @@ function drawTiles() {
 function drawWorld() {
   ctx.setTransform(RS, 0, 0, RS, 0, 0); ctx.imageSmoothingEnabled = false;
   const cam = Math.floor(G.camX);
-  drawBackground(); drawTiles();
+  drawBackground(); if (!G.lowFx) drawTopFaces(G.level, cam); drawTiles();
+  if (!G.lowFx) { shadowAt(G.player, cam, 9); for (const e of G.enemies) if (Math.abs(e.x - cam - 200) < 240 && !e.fly) shadowAt(e, cam); if (G.boss) shadowAt(G.boss, cam, G.boss.w * 0.6); for (const n of G.npcs) shadowAt(n, cam, 8); }
   for (const it of G.items) if (Math.abs(it.x - cam - 200) < 230) it.draw(ctx, cam);
   for (const p of G.platforms) p.draw(ctx, cam);
   for (const n of G.npcs) if (Math.abs(n.x - cam - 200) < 230) n.draw(ctx, cam);
@@ -619,6 +723,7 @@ function drawWorld() {
       continue;
     }
     const s = p.s;
+    if (p.dot) { ctx.globalAlpha = Math.min(1, p.life / 6); ctx.fillStyle = p.c; ctx.fillRect(p.x - cam - 1.5, p.y - 0.5, 3, 1); ctx.fillRect(p.x - cam - 0.5, p.y - 1.5, 1, 3); ctx.globalAlpha *= 0.35; ctx.fillRect(p.x - cam - 2, p.y - 2, 4, 4); continue; }
     ctx.fillRect(Math.round(p.x - cam - s / 2), Math.round(p.y - s / 2), Math.ceil(s), Math.ceil(s));
   }
   ctx.globalAlpha = 1;
@@ -701,10 +806,7 @@ function drawHUD() {
       const wb = hudBarH('hud_wpn', 40, 40, (G.ammo[G.weapon] || 0) / 28, W.color, '#ffffff');
       if (wb) { hudSpr('ic_' + G.weapon, wb.ix + wb.iw + 4, 40 + (wb.s.h - 13) / 2); txt(W.name, wb.ix + 2, 40 + wb.s.h, 7, W.color); }
     } else if (G.weapons && G.weapons.length > 1) { hudSpr('ic_water', 44, 42); txt('S 換武器', 60, 44, 7, '#9ab'); }
-    if (P.charge > 30) {
-      const r = SPR.f.hud_ring;
-      if (r) { const [sx, sy] = worldToScreen(P.cx, P.y - 10); const k = Math.min(1, (P.charge - 30) / 40); sctx.strokeStyle = P.charge >= 70 ? '#fff' : '#7fe6ff'; sctx.lineWidth = 2 * K; sctx.beginPath(); sctx.arc(sx * K, sy * K, r.w * 0.36 * K, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); sctx.stroke(); sctx.drawImage(r.img, (sx - r.w / 2) * K, (sy - r.h / 2) * K, r.w * K, r.h * K); }
-    }
+
     if (G.swapT > 0) { G.swapT--; const W = WEAPONS[G.weapon]; txt(W.name, 200, 60, 12, W.color, 'center'); }
     return;
   }
@@ -733,7 +835,7 @@ function drawHUD() {
   let ax = 34; const ay = 30;
   for (const k of ['charge', 'djump', 'dash']) if (G.abilities[k]) { const a = ABILITIES[k]; sctx.fillStyle = '#16111f'; sctx.fillRect(ax * K, ay * K, 9 * K, 9 * K); sctx.fillStyle = a.color; sctx.fillRect((ax + 1) * K, (ay + 1) * K, 7 * K, 7 * K); txt(a.name[0], ax + 1.5, ay + 0.5, 7, '#16111f', 'left', null); ax += 11; }
   // 蓄力提示
-  if (P.charge > 30) txt(P.charge >= 70 ? '★ 全力蓄滿 ★' : '蓄力中…', 200, 200, 8, P.charge >= 70 ? '#fff' : '#7fe6ff', 'center');
+  if (P.charge > 22) txt(P.charge >= 52 ? '★ 全力蓄滿 ★' : '蓄力中…', 200, 200, 8, P.charge >= 52 ? '#fff' : '#7fe6ff', 'center');
 }
 function worldToScreen(x, y) { const z = G.zc; return [((x - G.camX) - z.x) * (VW / z.w), (y - z.y) * (VH / z.h)]; }
 function drawTexts() {
@@ -766,8 +868,50 @@ function drawDialog() {
   lines.slice(0, 3).forEach((l, i) => txt(l, tx, by + 10 + i * 15, 10, '#f4ecd8', 'left', null));
   if (d.shown >= d.text.length && (G.t >> 4) % 2) txt('▼', bx + bw - 14, by + bh - 13, 8, '#ffd23f', 'left', null);
 }
+function drawBand(c) {
+  const t = c.t, dur = c.dur || 90, cy = c.y || 100, bh = 56, skew = 18;
+  const inK = Math.min(1, t / 7), outK = t > dur - 10 ? Math.min(1, (t - (dur - 10)) / 10) : 0;
+  const ease = k => 1 - Math.pow(1 - k, 3);
+  const slide = (1 - ease(inK)) * 420 - ease(outK) * 420; // 由右滑入、往左滑出
+  const hgt = bh * (outK > 0 ? 1 - outK * 0.6 : 1);
+  // 輕微壓暗（不是全黑）
+  sctx.fillStyle = `rgba(10,6,20,${0.28 * (1 - outK)})`; sctx.fillRect(0, 0, VW * K, VH * K);
+  const poly = (y0, y1, dx) => { sctx.beginPath(); sctx.moveTo((slide + dx - 10) * K, y0 * K); sctx.lineTo((slide + dx + VW + 30) * K, y0 * K); sctx.lineTo((slide + dx + VW + 30 - skew) * K, y1 * K); sctx.lineTo((slide + dx - 10 - skew) * K, y1 * K); sctx.closePath(); };
+  // 外框色帶
+  sctx.fillStyle = c.color || '#ffd23f'; poly(cy - hgt / 2 - 3, cy + hgt / 2 + 3, 0); sctx.fill();
+  sctx.save(); poly(cy - hgt / 2, cy + hgt / 2, 0); sctx.clip();
+  sctx.fillStyle = '#0d0a18'; sctx.fillRect(0, 0, VW * K, VH * K);
+  // 眼部特寫（慢慢平移）
+  const im = IMG[PORTRAIT[c.who]];
+  if (im) {
+    const ey = EYE[c.who] || 0.33, cropH = im.height * 0.2, sy = im.height * ey - cropH / 2;
+    const w = VW * 1.05, h = w * cropH / im.width, drift = -t * 0.25;
+    sctx.imageSmoothingEnabled = false;
+    sctx.drawImage(im, 0, sy, im.width, cropH, (slide + drift - 8) * K, (cy - h / 2) * K, w * K, h * K);
+  }
+  // 速度線
+  sctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  for (let i = 0; i < 18; i++) {
+    const yy = cy - hgt / 2 + ((i * 13.7) % hgt), len = 30 + (i * 23) % 70, x = ((i * 97 - t * (14 + i % 5 * 3)) % (VW + 120) + VW + 120) % (VW + 120) - 60;
+    sctx.lineWidth = (i % 3 === 0 ? 2 : 1) * K * 0.6; sctx.beginPath(); sctx.moveTo(x * K, yy * K); sctx.lineTo((x + len) * K, yy * K); sctx.stroke();
+  }
+  sctx.restore();
+  // 名稱
+  if (t > 6) {
+    const a = Math.min(1, (t - 6) / 8) * (1 - outK);
+    sctx.globalAlpha = a;
+    txt(c.sub || '', 24 + slide * 0.5, cy + hgt / 2 - 22, 8, c.color || '#ffd23f', 'left');
+    txt(c.name || '', 24 + slide * 0.5, cy + hgt / 2 - 13, 12, '#fff', 'left');
+    sctx.globalAlpha = 1;
+  }
+  // 入場閃光
+  if (t < 5) { sctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - t / 5)})`; sctx.fillRect(0, 0, VW * K, VH * K); }
+}
+// 歧路旅人式切入：斜向橫帶＋速度線＋眼部特寫（不用全畫面）
+const EYE = { hero: 0.30, witch: 0.40, abo: 0.33, lady: 0.26, dogking: 0.31, chief: 0.34, kid: 0.36 };
 function drawCutin() {
   const c = G.cutin; if (!c) return;
+  if (c.who) return drawBand(c);
   const t = c.t, W = VW * K, H = VH * K;
   sctx.fillStyle = 'rgba(0,0,0,0.6)'; sctx.fillRect(0, 0, W, H);
   // 斜向光帶
@@ -796,7 +940,7 @@ function drawTitle() {
   if (im) { const s = Math.max(VW / im.width, VH / im.height); const w = im.width * s, h = im.height * s; sctx.drawImage(im, (VW - w) / 2 * K, (VH - h) / 2 * K, w * K, h * K); }
   const g = sctx.createLinearGradient(0, 120 * K, 0, VH * K); g.addColorStop(0, 'rgba(7,8,15,0)'); g.addColorStop(1, 'rgba(7,8,15,0.92)'); sctx.fillStyle = g; sctx.fillRect(0, 0, VW * K, VH * K);
   const bob = Math.sin(G.t / 30) * 2;
-  if (!uiImg('ui_logo', 200, 42 + bob, 250)) { txt('紙袋清潔俠', 200, 18 + bob, 34, '#ffe36a', 'center', '#5a1d00'); txt('PAPER BAG CLEANER  ×  狗大便大作戰', 200, 58 + bob, 9, '#fff', 'center'); }
+  if (!uiImg('ui_logo', 200, 42 + bob, 250)) { txt('小編出擊！', 200, 18 + bob, 34, '#ffe36a', 'center', '#5a1d00'); txt('維護環境 你我一起來！', 200, 58 + bob, 9, '#fff', 'center'); }
   if (G.mode === 'boot') { if ((G.t >> 5) % 2) txt('按任意鍵開始（Enter / Z）', 200, 180, 11, '#fff', 'center'); return; }
   if (G.mode === 'help') { drawHelp(); return; }
   const opts = titleOptions();
@@ -885,7 +1029,7 @@ function drawCredits() {
   const t = G.credT, y0 = 230 - t * 0.35;
   const tt = Object.values(save.stats).reduce((a, s) => a + (s.time || 0), 0);
   const cl = Object.values(save.stats).reduce((a, s) => a + (s.clean || 0), 0);
-  const L = ['紙袋清潔俠', '', '— STAFF —', '主角　阿編（紙袋大叔）', '最終魔王　小魔女（教務主任）', '', '美術　GPT 生圖＋程式像素繪製', '特效　00GameDevs 特效庫（MIT）', '音樂・音效　晶片音源合成（可替換 Suno／ElevenLabs）', '', '— 你的成績 —', `總遊玩時間　${Math.floor(tt / 3600)} 分 ${Math.floor(tt / 60) % 60} 秒`, `清掃數量　${cl}`, `馴服狗狗　${G.tamed} 隻`, `倒下次數　${G.deaths}`, '', '遛狗請牽繩，便便請撿走！', '', 'THE END'];
+  const L = ['小編出擊！', '', '— STAFF —', '主角　小編（紙袋大叔）', '最終魔王　小魔女（教務主任）', '', '美術　GPT 生圖＋程式像素繪製', '特效　00GameDevs 特效庫（MIT）', '音樂・音效　晶片音源合成（可替換 Suno／ElevenLabs）', '', '— 你的成績 —', `總遊玩時間　${Math.floor(tt / 3600)} 分 ${Math.floor(tt / 60) % 60} 秒`, `清掃數量　${cl}`, `馴服狗狗　${G.tamed} 隻`, `倒下次數　${G.deaths}`, '', '遛狗請牽繩，便便請撿走！', '', 'THE END'];
   L.forEach((l, i) => { const y = y0 + i * 20; if (i === 0 && uiImg('ui_logo', 200, y + 10, 200)) return; if (l === 'THE END' && uiImg('ui_end', 200, y + 20, 220)) return; txt(l, 200, y, i === 0 ? 20 : l === 'THE END' ? 22 : 10, i === 0 || l === 'THE END' ? '#ffe36a' : '#fff', 'center'); });
 }
 function drawPause() {
@@ -935,7 +1079,7 @@ function render() {
   G.letterbox += (lbT - G.letterbox) * 0.15;
   if (G.letterbox > 0.01) { sctx.fillStyle = '#000'; sctx.fillRect(0, 0, screen.width, 16 * K * G.letterbox); sctx.fillRect(0, screen.height - 16 * K * G.letterbox, screen.width, 16 * K * G.letterbox); }
   drawTexts();
-  if (m !== 'ultra' && G.letterbox < 0.5) drawHUD();
+  if (m !== 'ultra' && G.letterbox < 0.5) { drawHUD(); drawTip(); }
   if (G.warnT > 0 && (G.warnT >> 3) % 2) { sctx.fillStyle = 'rgba(200,0,30,0.35)'; sctx.fillRect(0, 0, VW * K, VH * K); if (!uiImg('ui_warning', 200, 104, 300)) { sctx.fillStyle = 'rgba(200,0,30,0.75)'; sctx.fillRect(0, 90 * K, VW * K, 40 * K); txt('⚠ WARNING ⚠', 200, 96, 18, '#fff', 'center', '#600'); } txt(G.level.def.bossName + ' 出現！', 200, 136, 10, '#ffe', 'center', '#600'); }
   if (m === 'ready' && (G.readyT >> 3) % 2) { if (!uiImg('ui_ready', 200, 104, 130)) txt('READY', 200, 100, 20, '#fff', 'center'); }
   if (m === 'bossDown' && G.winPose) uiImg('ui_clear', 200, 70, 260, Math.min(1, (G.t % 1000) / 10));
@@ -963,7 +1107,7 @@ syncAbilities();
 // 測試用網址參數：?stage=2&boss=1&all=1
 if (QS.has('stage')) {
   const n = +QS.get('stage'); if (QS.has('abil')) { save.cleared = [1, 2, 3].filter(i => i < n || QS.get('abil') === 'all'); syncAbilities(); }
-  loadLevel(n); G.mode = 'play'; G.abilities = { charge: n > 1 || QS.has('abil'), djump: n > 2 || QS.has('abil'), dash: n > 3 || QS.has('abil') };
+  loadLevel(n); G.mode = 'play'; G.abilities = { charge: true, djump: n > 2 || QS.has('abil'), dash: n > 3 || QS.has('abil') };
   if (QS.has('boss')) { G.clean = G.level.total; const P = G.player; P.x = (G.level.gateX - 3) * TS; G.camX = camMax(); }
   if (QS.has('ultra')) G.ultra = 100;
 }

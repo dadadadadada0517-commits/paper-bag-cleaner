@@ -70,7 +70,7 @@ function wallAhead(e, dir) { const tx = Math.floor((dir > 0 ? e.x + e.w + 1 : e.
 class Player {
   constructor(x, y) { this.w = 14; this.h = 30; this.reset(x, y); }
   reset(x, y) {
-    Object.assign(this, { x: x - 7, y: y - 30, idleT: 0, vx: 0, vy: 0, face: 1, hp: 28, maxHp: 28, inv: 0, hurtT: 0, dashT: 0, dashCd: 0, airDash: true, djump: true, climbing: false,
+    Object.assign(this, { x: x - 7, y: y - 30, h: 30, crouch: false, idleT: 0, vx: 0, vy: 0, face: 1, hp: 28, maxHp: 28, inv: 0, hurtT: 0, dashT: 0, dashCd: 0, airDash: true, djump: true, climbing: false,
       shootT: 0, charge: 0, anim: 0, onGround: false, dead: false, slipT: 0, frozen: false, chargeFx: null, landed: true, deadT: 0 });
   }
   get cx() { return this.x + this.w / 2; }
@@ -81,7 +81,7 @@ class Player {
     if (msg) floatText(this.cx, this.y - 6, msg, '#ff8a8a');
     this.climbing = false; this.charge = 0;
     if (this.hp <= 0) { this.die(); return true; }
-    this.hurtT = 22; this.inv = 80; this.vx = (this.cx < fromX ? -1 : 1) * 1.2; this.vy = -2;
+    this.hurtT = 18; this.inv = 110; this.vx = (this.cx < fromX ? -1 : 1) * 1.2; this.vy = -2;
     FX('burst', this.cx, this.cy, { opts: { color: '#ff6a6a' } });
     return true;
   }
@@ -140,13 +140,21 @@ class Player {
       if (!this.dashT) this.dashCd = 8;
     } else {
       const sp = this.dashJump ? 2.6 : speed;
-      if (this.slipT > 0) { this.slipT--; this.vx *= 0.97; }
+      // 蹲下：按 ↓ 就蹲（身體變矮可躲攻擊）；放開且頭上有空間才站起來
+      const wantCrouch = I.held.down && this.onGround && this.slipT === 0;
+      if (wantCrouch && !this.crouch) { this.crouch = true; this.y += 10; this.h = 20; }
+      if ((!wantCrouch || I.pressed.jump) && this.crouch) {
+        const tl = Math.floor(this.x / TS), tr = Math.floor((this.x + this.w - 1) / TS), ty = Math.floor((this.y - 10) / TS);
+        if (!isSolid(tl, ty) && !isSolid(tr, ty)) { this.crouch = false; this.y -= 10; this.h = 30; }
+      }
+      if (this.crouch) { this.vx = 0; if (I.held.left) this.face = -1; if (I.held.right) this.face = 1; }
+      else if (this.slipT > 0) { this.slipT--; this.vx *= 0.97; }
       else if (I.held.left) { this.vx = -sp; this.face = -1; }
       else if (I.held.right) { this.vx = sp; this.face = 1; }
       else this.vx = 0;
       // 跳躍
       if (I.pressed.jump) {
-        if (this.onGround) { this.vy = -5.3; Audio8.sfx('jump'); }
+        if (this.onGround && !this.crouch) { this.vy = -5.3; Audio8.sfx('jump'); }
         else if (A.djump && this.djump) { this.djump = false; this.vy = -4.6; Audio8.sfx('djump'); FX('puff', this.cx, this.y + this.h, { opts: { color: '#ff9ae6', size: 0.4 } }); for (let i = 0; i < 6; i++) G.parts.push({ x: this.cx + rnd(-6, 6), y: this.y + this.h, vx: rnd(-1, 1), vy: rnd(0.5, 1.5), life: 24, max: 24, c: '#ffc8f0', s: 3, g: 0, bubble: true }); }
       }
       if (!I.held.jump && this.vy < -1.5) this.vy = -1.5;
@@ -157,7 +165,7 @@ class Player {
     moveBody(this);
     if (this.landT > 0) this.landT--;
     if (this.onGround) { this.djump = true; this.airDash = true; this.dashJump = false; if (!wasGround) { this.landT = 5; Audio8.sfx('land'); sparks(this.cx, this.y + this.h, '#e8dcc0', 4, 1, 0.05); } }
-    if (this.onSpike) this.hurt(4, this.cx + this.face, '好痛！');
+    if (this.onSpike) this.hurt(3, this.cx + this.face, '好痛！');
     if (this.y > G.level.h * TS + 20) { this.hp = 0; this.die(); }
     this.doShoot(I, A);
   }
@@ -168,8 +176,8 @@ class Player {
       const myShots = G.bullets.filter(b => !b.big && !b.dead && !b.wkind).length;
       if (lvl === 0 && (G.weapon || 'water') === 'water' && myShots >= 3 + (G.gunLv || 0)) return;
       const hasSpr = SPR.has('h_shoot');
-      const low = G.input.held.down && this.onGround && !this.climbing;
-      const bx = this.cx + this.face * (hasSpr ? 20 : 16), by = this.y + (low ? 24 : hasSpr ? (this.dashT > 0 ? 16 : 10) : (this.climbing ? 11 : this.dashT > 0 ? 17 : 15) + (this.onGround || this.climbing ? 0 : -2));
+      const low = this.crouch && !this.climbing;
+      const bx = this.cx + this.face * (hasSpr ? 20 : 16), by = this.y + (low ? 9 :hasSpr ? (this.dashT > 0 ? 16 : 10) : (this.climbing ? 11 : this.dashT > 0 ? 17 : 15) + (this.onGround || this.climbing ? 0 : -2));
       if (low) this.lowT = 16;
       const wk = G.weapon || 'water';
       if (wk !== 'water' && lvl === 0) { // 魔王武器
@@ -189,11 +197,18 @@ class Player {
     if (A.charge) {
       if (I.held.shoot) {
         this.charge++;
-        if (this.charge === 30) Audio8.sfx('charge1');
-        if (this.charge > 30 && this.charge % 12 === 0) Audio8.sfx(this.charge > 70 ? 'charge2' : 'charge1');
-        if (this.charge > 30 && this.anim % 2 === 0) { const a = rnd(0, 6.28), r = 18; G.parts.push({ x: this.cx + Math.cos(a) * r, y: this.cy + Math.sin(a) * r, vx: -Math.cos(a) * 1.2, vy: -Math.sin(a) * 1.2, life: 14, max: 14, c: this.charge > 70 ? '#ffffff' : '#7fe6ff', s: 2, g: 0 }); }
+        if (this.charge === 22) Audio8.sfx('charge1');
+        if (this.charge > 22 && this.charge % (this.charge >= 52 ? 6 : 10) === 0) Audio8.sfx(this.charge >= 52 ? 'charge2' : 'charge1');
+        // FC 洛克人式集氣：小光點從外圈慢慢往身上聚集
+        if (this.charge > 8 && this.anim % 3 === 0) {
+          const full = this.charge >= 52;
+          for (let n = 0; n < (full ? 2 : 1); n++) {
+            const a = rnd(0, 6.28), r = rnd(24, 34), sp = full ? 1.3 : 0.9;
+            G.parts.push({ x: this.cx + Math.cos(a) * r, y: this.cy - 2 + Math.sin(a) * r, vx: -Math.cos(a) * sp, vy: -Math.sin(a) * sp, life: Math.round(r / sp) - 2, max: Math.round(r / sp), c: full ? (n ? '#fff6a0' : '#ffffff') : '#8ff0ff', s: 1.6, g: 0, dot: true });
+          }
+        }
       } else if (this.charge > 0) {
-        if (this.charge >= 70) fire(2); else if (this.charge >= 30) fire(1);
+        if (this.charge >= 52) fire(2); else if (this.charge >= 22) fire(1);
         this.charge = 0;
       }
     }
@@ -214,7 +229,8 @@ class Player {
   }
   sprKey() {
     // 洛克人式動作（h3 精靈圖）優先
-    if (SPR.has('m_run0') && !this.climbing && !(this.frozen && G.winPose) && this.dashT === 0 && this.lowT <= 0 && this.charge <= 30) {
+    if (this.crouch) return this.lowT > 0 || this.shootT > 0 ? 'h_charge' : 'h_j0';
+    if (SPR.has('m_run0') && !this.climbing && !(this.frozen && G.winPose) && this.dashT === 0 && this.lowT <= 0) {
       const sh = this.shootT > 0, N = SPR.has('n_run0');
       if (this.hurtT > 0) return 'm_hurt';
       if (!this.onGround) return sh ? 'm_jshoot' : N ? 'n_jump' : 'm_jump';
@@ -225,8 +241,8 @@ class Player {
       }
       if (this.slipT > 0) return 'h_stagger';
       if (sh) return N ? 'n_shoot' : 'm_shoot';
-      if (N && this.idleT < 150) return 'n_idle';
-      if (this.idleT > 150 && SPR.has('h_idle0')) return Math.floor(this.anim / 30) % 2 ? 'h_idle0' : 'h_idle1';
+      // 站立：水槍放下的自然站姿（右手持槍）
+      if (SPR.has('h_idle0')) return Math.floor(this.anim / 40) % 2 ? 'h_idle0' : 'h_idle1';
       return 'm_idle';
     }
     if (this.hurtT > 0) return this.hurtT > 12 ? 'h_hurt' : 'h_stagger';
@@ -240,7 +256,6 @@ class Player {
     if (this.hp < 8 && this.idleT > 60) return 'h_stagger';
     if (this.lowT > 0) return 'h_charge';
     if (this.shootT > 0) return 'h_shoot';
-    if (this.charge > 30) return 'h_charge';
     if (this.idleT > 150) return Math.floor(this.anim / 30) % 2 ? 'h_idle0' : 'h_idle1';
     return 'h_idleGun';
   }
@@ -249,13 +264,20 @@ class Player {
     if (this.inv > 0 && Math.floor(this.inv / 3) % 2 && this.hurtT === 0) return;
     const sk = this.sprKey();
     if (SPR.has(sk)) {
-      const flashW = this.charge > 30 && Math.floor(this.charge / (this.charge > 70 ? 2 : 4)) % 2;
+      // 集氣閃光：第一段慢閃藍光；集滿快速輪流閃白／黃光
+      const ch = this.charge, full = ch >= 52, lv1 = ch >= 22;
+      const ph = full ? Math.floor(ch / 2) % 3 : Math.floor(ch / 6) % 2;
+      const flashW = lv1 && (full ? ph !== 0 : ph === 1);
+      const glowCol = full ? (ph === 1 ? '#ffffff' : '#ffe36a') : '#7fe6ff';
       // 爬梯：每爬一步左右鏡像一次 → 左右手、左右腳交替
       const step = Math.floor(this.y / 6) % 2;
       const flip = this.climbing ? (this.shootT > 0 ? this.face : step ? -1 : 1) : this.face, dx = this.cx - cx, dy = this.y + this.h + 1 - (G.ultraLift || 0);
       if (this.dashT > 0) SPR.draw(ctx, sk, dx - this.face * 9, dy, flip, false, 0.35);
-      SPR.draw(ctx, sk, dx, dy, flip, false);
-      if (flashW || G.heroGlow > 0 && (G.t >> 2) % 2) SPR.draw(ctx, sk, dx, dy, flip, true, 0.55);
+      if (lv1) { ctx.save(); ctx.shadowColor = glowCol; ctx.shadowBlur = full ? 10 : 6; SPR.draw(ctx, sk, dx, dy, flip, false); ctx.restore(); }
+      else SPR.draw(ctx, sk, dx, dy, flip, false);
+      if (flashW) SPR.draw(ctx, sk, dx, dy, flip, true, full ? (ph === 1 ? 0.75 : 0.45) : 0.4);
+      else if (G.heroGlow > 0 && (G.t >> 2) % 2) SPR.draw(ctx, sk, dx, dy, flip, true, 0.55);
+      if (full && ph === 2) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.35; SPR.draw(ctx, sk, dx, dy, flip, true); ctx.restore(); }
       return;
     }
     const k = this.sprite();
@@ -278,7 +300,7 @@ class Bullet {
     const gl = G.gunLv || 0, k = 1 + gl * 0.22; this.gl = gl;   // 每打倒一個魔王，水槍變大變強
     const sz = [[8, 6], [14, 10], [22, 16]][lvl];
     this.w = Math.round(sz[0] * k); this.h = Math.round(sz[1] * k); this.x = x - this.w / 2; this.y = y - this.h / 2;
-    this.vx = dir * (lvl ? 5 : 4.5 + gl * 0.3); this.dmg = [1, 2, 4][lvl] + (gl >= 2 ? 1 : 0) + (gl >= 3 && lvl ? 1 : 0); this.pierce = lvl === 2; this.hitSet = new Set(); this.t = 0;
+    this.vx = dir * (lvl ? 5 : 4.5 + gl * 0.3); this.dmg = [2, 4, 7][lvl] + (gl >= 2 ? 1 : 0) + (gl >= 3 && lvl ? 1 : 0); this.pierce = lvl === 2; this.hitSet = new Set(); this.t = 0;
     this.fx = lvl ? FX('bolt', this.x + this.w / 2, this.y + this.h / 2, { follow: this, dir, opts: { size: lvl === 2 ? 0.75 : 0.5 } }) : null;
   }
   get cx() { return this.x + this.w / 2; }
@@ -384,11 +406,11 @@ class Item {
       if ((this.type === 'trash' || this.type === 'egg') && P.dashT > 0 && Math.abs(this.cx - P.cx) < 30 && Math.abs(this.y - P.y) < 30) { this.x += (P.cx - this.cx) * 0.3; this.y += (P.cy - this.y) * 0.3; }
       return;
     }
-    if (this.type === 'trash') { this.dead = true; G.cleanUp(this.cx, this.y, '撿起垃圾！'); Audio8.sfx('trash'); FX('puff', this.cx, this.y + 4, { opts: { size: 0.25, color: '#fff7c8' } }); }
+    if (this.type === 'trash') { this.dead = true; G.cleanUp(this.cx, this.y, '撿起垃圾！'); Audio8.sfx('trash'); G.tip(G.tipsShown.has('trash') ? 'trash2' : 'trash'); FX('puff', this.cx, this.y + 4, { opts: { size: 0.25, color: '#fff7c8' } }); }
     else if (this.type === 'egg' || this.type === 'boba') { this.dead = true; G.heal(this.type === 'egg' ? 6 : 28); floatText(this.cx, this.y, this.type === 'egg' ? '茶葉蛋 +6' : '珍珠奶茶 全回復！', '#9dff9d'); }
-    else if (this.type === 'check' && !this.active) { this.active = true; G.checkpoint = { x: this.cx, y: this.y + this.h }; Audio8.sfx('checkpoint'); FX('healfield', this.cx, this.y + this.h); floatText(this.cx, this.y - 8, '中繼點！', '#8fffc0'); }
+    else if (this.type === 'check' && !this.active) { this.active = true; G.checkpoint = { x: this.cx, y: this.y + this.h }; Audio8.sfx('checkpoint'); FX('healfield', this.cx, this.y + this.h); floatText(this.cx, this.y - 8, '中繼點！', '#8fffc0'); G.tip('check'); }
     else if ((this.type === 'poop' || this.type === 'big') && P.onGround && P.inv === 0 && P.dashT === 0 && P.slipT === 0) {
-      P.slipT = 24; P.vx = P.face * 2.4; P.hurt(2, P.cx - P.face, '踩到大便！');
+      P.slipT = 24; P.vx = P.face * 2.4; P.hurt(2, P.cx - P.face, '踩到大便！'); G.tip('fine');
       Audio8.sfx('squish'); FX('venom', this.cx, this.y + this.h, { opts: { size: 0.35 }, life: 0.6 });
     }
   }
@@ -402,7 +424,7 @@ class Item {
     this.dead = true; if (b.hitEnemy) b.hitEnemy(this);
     G.ammoGain && G.ammoGain(1);
     G.cleanUp(this.cx, this.y, this.type === 'big' ? '大坨沖乾淨！' : '沖乾淨了！', this.type === 'big' ? 2 : 1);
-    Audio8.sfx('clean'); FX('wave', this.cx, this.y + this.h, { opts: { size: this.type === 'big' ? 0.6 : 0.4 } });
+    Audio8.sfx('clean'); FX('wave', this.cx, this.y + this.h, { opts: { size: this.type === 'big' ? 0.6 : 0.4 } }); G.tip(this.type === 'big' ? 'big' : 'poop');
     sparks(this.cx, this.y, '#fff8a8', 6, 1.5, 0);
   }
   draw(ctx, cx) {
@@ -438,12 +460,12 @@ class Item {
 
 // ---------- 敵人 ----------
 const ENEMY_DEF = {
-  d: { w: 22, h: 14, hp: 3, dmg: 3, name: 'dog' }, D: { w: 22, h: 14, hp: 3, dmg: 3, name: 'dogB' },
-  f: { w: 8, h: 7, hp: 1, dmg: 2, name: 'fly', fly: true }, b: { w: 16, h: 16, hp: 3, dmg: 3, name: 'bagm' },
-  o: { w: 12, h: 30, hp: 4, dmg: 2, name: 'walker' }, u: { w: 14, h: 18, hp: 3, dmg: 3, name: 'poopman' },
-  s: { w: 16, h: 11, hp: 2, dmg: 2, name: 'slime' }, r: { w: 14, h: 8, hp: 1, dmg: 2, name: 'rat' },
-  R: { w: 20, h: 10, hp: 4, dmg: 3, name: 'robo' }, m: { w: 18, h: 24, hp: 6, dmg: 3, name: 'mech' },
-  c: { w: 16, h: 12, hp: 2, dmg: 3, name: 'cat' }, w: { w: 24, h: 10, hp: 2, dmg: 3, name: 'broom', fly: true },
+  d: { w: 22, h: 14, hp: 2, dmg: 2, name: 'dog' }, D: { w: 22, h: 14, hp: 2, dmg: 2, name: 'dogB' },
+  f: { w: 8, h: 7, hp: 1, dmg: 1, name: 'fly', fly: true }, b: { w: 16, h: 16, hp: 2, dmg: 2, name: 'bagm' },
+  o: { w: 12, h: 30, hp: 3, dmg: 2, name: 'walker' }, u: { w: 14, h: 18, hp: 2, dmg: 2, name: 'poopman' },
+  s: { w: 16, h: 11, hp: 2, dmg: 2, name: 'slime' }, r: { w: 14, h: 8, hp: 1, dmg: 1, name: 'rat' },
+  R: { w: 20, h: 10, hp: 3, dmg: 2, name: 'robo' }, m: { w: 18, h: 24, hp: 4, dmg: 2, name: 'mech' },
+  c: { w: 16, h: 12, hp: 2, dmg: 2, name: 'cat' }, w: { w: 24, h: 10, hp: 1, dmg: 2, name: 'broom', fly: true },
   v: { w: 14, h: 6, hp: 999, dmg: 3, name: 'vent', inv: true },
 };
 class Enemy {
@@ -521,7 +543,7 @@ class Enemy {
         const ph = this.t % 150;
         this.active = ph > 80;
         if (ph === 81) { Audio8.sfx('gas'); this.fx = FX('steam', this.cx, this.y + this.h, { life: 1.1, opts: { size: 0.55 } }); }
-        if (this.active && P.x < this.x + this.w + 2 && P.x + P.w > this.x - 2 && P.y + P.h > this.y - 52 && P.y < this.y) P.hurt(3, this.cx, '臭氣！');
+        if (this.active && P.x < this.x + this.w + 2 && P.x + P.w > this.x - 2 && P.y + P.h > this.y - 52 && P.y < this.y) { P.hurt(2, this.cx, '臭氣！'); G.tip('vent'); }
         if (this.active && this.t % 3 === 0) G.parts.push({ x: this.cx + rnd(-4, 4), y: this.y, vx: rnd(-0.3, 0.3), vy: -rnd(1, 2.4), life: 26, max: 26, c: '#9fdc6a', s: 3, g: 0 });
         break;
       }
@@ -560,14 +582,14 @@ class Enemy {
   defeat() {
     const isDog = this.code === 'd' || this.code === 'D';
     G.score += 100;
-    if (isDog) { this.state = 'tamed'; this.st = 0; this.face = G.player.cx < this.cx ? 1 : -1; Audio8.sfx('tame'); floatText(this.cx, this.y - 8, '冷靜下來了～♥', '#ff9fc8'); FX('heal', this.cx, this.y + this.h, { opts: { size: 0.4 } }); G.tamed++; return; }
-    if (this.code === 'o') { this.state = 'sorry'; this.st = 0; this.face = G.player.cx < this.cx ? 1 : -1; Audio8.sfx('tame'); floatText(this.cx, this.y - 10, ['對不起！我會撿！', '下次會帶袋子…', '我錯了啦～'][this.variant], '#ffe18a'); FX('puff', this.cx, this.y + this.h / 2); return; }
+    if (isDog) { this.state = 'tamed'; this.st = 0; this.face = G.player.cx < this.cx ? 1 : -1; Audio8.sfx('tame'); floatText(this.cx, this.y - 8, '冷靜下來了～♥', '#ff9fc8'); G.tip('dog'); FX('heal', this.cx, this.y + this.h, { opts: { size: 0.4 } }); G.tamed++; return; }
+    if (this.code === 'o') { this.state = 'sorry'; this.st = 0; this.face = G.player.cx < this.cx ? 1 : -1; Audio8.sfx('tame'); floatText(this.cx, this.y - 10, ['對不起！我會撿！', '下次會帶袋子…', '我錯了啦～'][this.variant], '#ffe18a'); FX('puff', this.cx, this.y + this.h / 2); G.tip('owner'); return; }
     this.dead = true;
     if (this.code === 'R' || this.code === 'm') { FX('explode', this.cx, this.cy, { opts: { size: this.code === 'm' ? 0.6 : 0.45 } }); Audio8.sfx('explode'); G.shake = 5; sparks(this.cx, this.cy, '#ffd23f', 12, 2.5, 0.12); }
     else if (this.code === 'u' || this.code === 's') { FX('venom', this.cx, this.y + this.h, { opts: { size: 0.4 }, life: 0.8 }); Audio8.sfx('squish'); const p = new Item('poop', this.cx, this.y + this.h, true); G.items.push(p); G.dynPoops++; floatText(this.cx, this.y - 6, '變回便便了！快沖掉！', '#ffd23f'); }
     else if (this.code === 'b') { FX('puff', this.cx, this.cy, { opts: { size: 0.45, color: '#555a68' } }); Audio8.sfx('explode'); for (let i = 0; i < 2; i++) { const t = new Item('trash', this.cx + (i ? 8 : -8), this.y + this.h, true); t.vy = -2; G.items.push(t); G.dynPoops++; } }
     else { FX('puff', this.cx, this.cy, { opts: { size: 0.35 } }); Audio8.sfx('explode'); }
-    if (Math.random() < 0.15) G.items.push(Object.assign(new Item(Math.random() < 0.85 ? 'egg' : 'boba', this.cx, this.y + this.h, true), { vy: -3 }));
+    if (Math.random() < 0.3) G.items.push(Object.assign(new Item(Math.random() < 0.85 ? 'egg' : 'boba', this.cx, this.y + this.h, true), { vy: -3 }));
   }
   sprKey() {
     const f2 = Math.floor(this.t / 8) % 2, f8 = Math.floor(this.t / 4) % 8, f4 = Math.floor(this.t / 4) % 4;
@@ -647,7 +669,7 @@ class Enemy {
 // ---------- 敵方子彈 ----------
 class EShot {
   constructor(type, x, y, vx, vy, o = {}) {
-    Object.assign(this, { type, vx, vy, t: 0, grav: 0, dmg: 3, ...o });
+    Object.assign(this, { type, vx, vy, t: 0, grav: 0, dmg: 2, ...o }); if (this.dmg > 2) this.dmg -= 1;
     const sz = { bag: [9, 9], ball: [8, 8], star: [7, 7], bigstar: [9, 9], paper: [11, 13], handbag: [13, 11], gas: [16, 16], rain: [10, 8], wave: [14, 12], chi: [12, 9], note: [8, 8] }[type] || [8, 8];
     this.w = sz[0]; this.h = sz[1]; this.x = x - this.w / 2; this.y = y - this.h / 2;
     if (type === 'bag' || type === 'ball' || type === 'rain') this.grav = 0.18;
