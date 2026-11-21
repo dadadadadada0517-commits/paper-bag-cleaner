@@ -100,7 +100,7 @@ function updateCameo() {
   if (!G.cameo) {
     if (--G.cameoTimer > 0) return;
     G.cameoTimer = 2400 + Math.floor(rnd(0, 1800));
-    const id = Math.random() < 0.5 ? 'm' : 's', dir = Math.random() < 0.5 ? 1 : -1, gift = Math.random() < 0.55;
+    const id = Math.random() < 0.5 ? 'm' : 's', dir = Math.random() < 0.5 ? 1 : -1, gift = true;
     G.cameo = { id, gift, dir, t: 0, x: G.camX + (dir > 0 ? -40 : VW + 40), y: gift ? 62 : rnd(78, 100), say: '', sayT: 0, phase: 'in' };
     Audio8.sfx('warp');
     return;
@@ -111,10 +111,12 @@ function updateCameo() {
     if (c.t === 50) { c.say = C.lines[Math.random() < 0.5 ? 0 : 2]; c.sayT = 150; }
     if (Math.abs(c.x - G.camX - 200) > 300) G.cameo = null;
   } else {
-    if (c.phase === 'in') { const tx = P.cx - c.dir * 30; c.x += (tx - c.x) * 0.06; c.y += (62 - c.y) * 0.06; if (Math.abs(tx - c.x) < 4) { c.phase = 'hover'; c.t = 0; c.say = C.lines[1]; c.sayT = 110; Audio8.sfx('magic'); } }
-    else if (c.phase === 'hover') { c.y = 62 + Math.sin(c.t / 10) * 2; if (c.t === 60) { c.phase = 'throw'; c.t = 0; } }
+    if (c.phase === 'in') { const tx = P.cx - c.dir * 30; c.x += (tx - c.x) * 0.06; c.y += (62 - c.y) * 0.06; if (Math.abs(tx - c.x) < 4) { c.phase = 'hover'; c.t = 0; c.say = '我來幫你！'; c.sayT = 110; Audio8.sfx('magic'); } }
+    else if (c.phase === 'hover') { c.y = 62 + Math.sin(c.t / 10) * 2;
+      if (c.t === 25) { let n = 0; for (const e of G.enemies) if (!e.dead && e.code !== 'o' && e.code !== 'v' && e.state !== 'tamed' && e.x > G.camX - 10 && e.x < G.camX + VW + 10) { e.damage(99, null); n++; } if (G.intruder && G.intruder.state !== 'ko') { knockOut(G.intruder, C.name + '：滾開！'); n++; } G.flash = 6; Audio8.sfx('bigshot'); if (n) floatText(c.x, c.y + 24, C.name + '掃蕩！擊退 ' + n + ' 隻', '#ffe36a', true); }
+      if (c.t === 60) { c.phase = 'throw'; c.t = 0; } }
     else if (c.phase === 'throw') {
-      if (c.t === 6) { const r = Math.random(), type = r < 0.4 ? 'boba' : r < 0.7 ? 'star' : 'egg'; const it = new Item(type, c.x + c.dir * 10, c.y + 10, true); it.vy = -2; G.items.push(it); Audio8.sfx('throw'); FX('heal', c.x, c.y + 10, { opts: { size: 0.3 } }); }
+      if (c.t === 6 || c.t === 14) { const r = Math.random(), type = c.t === 6 ? 'boba' : r < 0.6 ? 'star' : 'egg'; const it = new Item(type, c.x + c.dir * (c.t === 6 ? 6 : 18), c.y + 10, true); it.vy = -2; G.items.push(it); Audio8.sfx('throw'); FX('heal', c.x, c.y + 10, { opts: { size: 0.3 } }); }
       if (c.t > 24) { c.phase = 'out'; c.t = 0; }
     } else { c.x += c.dir * 3; c.y -= 0.6; if (Math.abs(c.x - G.camX - 200) > 300) G.cameo = null; }
   }
@@ -295,10 +297,10 @@ function loadLevel(n) {
 function updateYoku() {
   const L = G.level; L.tt++;
   const n = L.yoku.length; if (!n) return;
-  const step = 40, cyc = n * step + 100;
+  const step = 40, cyc = 240; // 每塊亮 170/240 幀，前後塊重疊，比較好跳
   for (const g of L.yoku) {
     const ph = ((L.tt - g.i * step) % cyc + cyc) % cyc;
-    const was = g.on; g.on = ph < 130; g.age = ph;
+    const was = g.on; g.on = ph < 170; g.age = ph;
     if (g.on && !was && Math.abs(g.x1 * TS - G.camX - 200) < 260) Audio8.sfx('blip');
   }
 }
@@ -759,7 +761,7 @@ function drawTiles() {
     else if (c === '^') { ctx.drawImage(S[`t${th}_fill_${v}`], x, y); ctx.drawImage(S[`t${th}_spike`], x, y - 8); }
     else if (c === 'Y') {
       const g = L.yoku.find(g => g.y === ty && tx >= g.x1 && tx <= g.x2);
-      if (g && g.on) { if (g.age < 8) { ctx.globalAlpha = g.age / 8; } if (g.age > 115 && (g.age >> 1) % 2) ctx.globalAlpha = 0.4; ctx.drawImage(S[`t${th}_yoku`], x, y); ctx.globalAlpha = 1; }
+      if (g && g.on) { if (g.age < 8) { ctx.globalAlpha = g.age / 8; } if (g.age > 145 && (g.age >> 1) % 2) ctx.globalAlpha = 0.4; ctx.drawImage(S[`t${th}_yoku`], x, y); ctx.globalAlpha = 1; }
       else { ctx.strokeStyle = 'rgba(86,240,224,0.25)'; ctx.strokeRect(x + 0.5, y + 0.5, 15, 15); }
     }
     else if (c === 'G') {

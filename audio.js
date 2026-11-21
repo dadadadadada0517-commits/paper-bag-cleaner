@@ -298,10 +298,13 @@ const Audio8 = (() => {
     if (location.protocol === 'file:') return;
     fetch('sfx-list.json').then(r => r.ok ? r.json() : []).catch(() => []).then(list => list.forEach(n => fetch('sfx-' + n + '.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && ac.decodeAudioData(b)).then(buf => { if (buf) ext.sfx[n] = buf; }).catch(() => {})));
   }
+  const playing = {};
+  function stopSfx(...names) { for (const n of names) { for (const s of playing[n] || []) { try { s.stop(); } catch (e) {} } playing[n] = []; } }
   function playExt(n) {
     const s = ac.createBufferSource(), g = ac.createGain();
     s.buffer = ext.sfx[n]; s.playbackRate.value = n === 'blip' ? 0.92 + Math.random() * 0.16 : 1;
     g.gain.value = SFX_VOL[n] || 0.9; s.connect(g); g.connect(sfxGain); s.start();
+    (playing[n] = playing[n] || []).push(s); s.onended = () => { const a = playing[n]; if (a) a.splice(a.indexOf(s), 1); };
   }
   function sfx(name, minGap = 0.03) {
     if (!ac || (!SFX[name] && !ext.sfx[name])) return;
@@ -311,5 +314,5 @@ const Audio8 = (() => {
     if (ext.sfx[name]) playExt(name); else SFX[name]();
   }
 
-  return { init, music, stopMusic, sfx, hasExt: n => !!ext.sfx[n], toggleMute, isMuted: () => muted, get current() { return curName; } };
+  return { init, music, stopMusic, sfx, stopSfx, hasExt: n => !!ext.sfx[n], toggleMute, isMuted: () => muted, get current() { return curName; } };
 })();

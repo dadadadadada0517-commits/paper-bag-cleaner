@@ -5,6 +5,7 @@ const INTRUDERS = {
 };
 G.intruderTimer = 2100;
 
+function endIntruder() { G.intruder = null; Audio8.stopSfx('siren', 'gas'); }
 function floorAt(x, fallback) {
   const tx = Math.floor(x / TS);
   for (let ty = Math.max(2, Math.floor((fallback - 6) / TS)); ty < G.level.h; ty++) if (isSolid(tx, ty) || isOneWay(tx, ty)) return ty * TS;
@@ -34,10 +35,11 @@ function updateIntruder() {
   }
   const I = G.intruder, D = INTRUDERS[I.kind]; I.t++; if (I.flash) I.flash--; if (I.sayT) I.sayT--;
   const cx = I.x + I.w / 2;
+  if (cx < G.camX - 20 || cx > G.camX + VW + 20) { if (I.state !== 'warn') Audio8.stopSfx('siren', 'gas'); }
   // 被打跑：往後飛出畫面
   if (I.state === 'ko') {
     I.x += I.vx; I.y += I.vy; I.vy += 0.15; I.rot = (I.rot || 0) + 0.25 * Math.sign(I.vx);
-    if (I.y > VH + 60 || Math.abs(cx - G.camX - VW / 2) > VW) G.intruder = null;
+    if (I.y > VH + 60 || Math.abs(cx - G.camX - VW / 2) > VW) endIntruder();
     updateHeroStrike(I); return;
   }
   // 超人來救援
@@ -59,7 +61,7 @@ function updateIntruder() {
       if (I.t % 6 === 0) G.parts.push({ x: cx - I.dir * 12, y: I.y + I.h - 2, vx: -I.dir * 0.6, vy: -0.4, life: 18, max: 18, c: '#e8dcc0', s: 1, g: 0, cloud: true, r0: 2, r1: 6 });
       if (I.t % 14 === 0) G.shake = Math.max(G.shake, 1.5);
       if (overlap(I, P)) P.hurt(4, cx, '被犀牛撞飛！');
-      if ((I.dir > 0 && I.x > G.camX + VW + 60) || (I.dir < 0 && I.x + I.w < G.camX - 60)) G.intruder = null;
+      if ((I.dir > 0 && I.x > G.camX + VW + 60) || (I.dir < 0 && I.x + I.w < G.camX - 60)) endIntruder();
     }
   } else {
     // 颱風怪人：飛到主角前方盤旋，吹風把主角往後推，順便丟垃圾
@@ -71,7 +73,7 @@ function updateIntruder() {
       if (I.blow && Math.abs(P.cy - I.y) < 140) { if (!P.frozen && P.x + face * 0.6 > G.camX + 4) { P.x += face * 0.6; } if (I.t % 4 === 0) G.parts.push({ x: cx + face * 14, y: I.y + 18 + rnd(-6, 6), vx: face * 3, vy: rnd(-0.3, 0.3), life: 30, max: 30, c: '#d9c8ff', s: 2, g: 0 }); if (I.t % 40 === 0) Audio8.sfx('gas', 0.3); }
       if (I.t % 120 === 60) { const it = new Item('trash', cx, I.y + I.h, true); it.vy = 0; G.items.push(it); G.dynPoops++; Audio8.sfx('throw'); I.say = D.lines[1]; I.sayT = 80; }
       if (I.t > 900) { I.state = 'leave'; }
-    } else if (I.state === 'leave') { I.y -= 1.5; I.x += I.dir * 2; if (I.y < -80) G.intruder = null; }
+    } else if (I.state === 'leave') { I.y -= 1.5; I.x += I.dir * 2; if (I.y < -80) endIntruder(); }
     if (overlap(I, P)) P.hurt(2, cx, '被颱風捲到！');
   }
 }
@@ -79,7 +81,7 @@ function updateIntruder() {
 function knockOut(I, msg) {
   const D = INTRUDERS[I.kind];
   I.state = 'ko'; I.vx = (I.x + I.w / 2 < G.player.cx ? -1 : 1) * 3.5; I.vy = -4; I.say = D.ko; I.sayT = 70;
-  fcPop(I.x + I.w / 2, I.y + I.h / 2, 1.5); Audio8.sfx('explode'); G.shake = 6;
+  fcPop(I.x + I.w / 2, I.y + I.h / 2, 1.5); Audio8.stopSfx('siren', 'gas'); Audio8.sfx('explode'); G.shake = 6;
   floatText(I.x + I.w / 2, I.y - 6, msg, '#ffe36a', true);
   G.ultra = Math.min(100, G.ultra + 20);
   const it = new Item(Math.random() < 0.5 ? 'boba' : 'star', I.x + I.w / 2, I.y + I.h, true); it.vy = -3; G.items.push(it);
