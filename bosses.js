@@ -223,14 +223,15 @@ class Boss {
     }
     this.hp -= dmg; this.inv = weak ? 20 : 10; this.flash = 18; Audio8.sfx('hit');
     if (b) { sparks(b.cx, b.y + b.h / 2, '#bff4ff', 6, 1.6, 0.1); if (dmg >= 6) floatText(this.cx, this.y - 4, 'BIG HIT!', '#ffd23f'); }
-    if (this.hp <= 0) { this.hp = 0; this.defeated = true; this.st = 0; G.onBossDefeated(this); }
+    if (this.hp <= 0) { this.hp = 0; this.defeated = true; this.st = 0; this.vx = 0; G.onBossDefeated(this); }
     return true;
   }
   deathAnim() {
     // 交給 main 的流程；這裡只做持續小爆炸
     if (this.st < 100 && this.st % 24 === 0) { FX('explode', this.cx + rnd(-16, 16), this.cy + rnd(-16, 16), { opts: { size: 0.4 } }); Audio8.sfx('explode'); G.shake = 6; }
     if (this.kind === 'witch') { if (this.y + this.h < this.floorY) { this.y += 1.2; } this.x += ((G.arena.x0 + G.arena.x1) / 2 - this.cx) * 0.02; }
-    else this.physics();
+    else { this.vx = 0; if (this.vy < 0) this.vy = 0; this.physics(); } // 空中被打倒：不再帶著衝刺速度飛出畫面，直接落下
+    const A = G.arena; if (A) this.x = clamp(this.x, A.x0 + 4, A.x1 - this.w - 4);
     if (this.kind === 'abo') { const d = this.dog; d.vx = 0; d.state = 'happy'; }
   }
   sprKey() {
