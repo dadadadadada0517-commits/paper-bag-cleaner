@@ -76,6 +76,16 @@
   let lastEnd = 0; document.addEventListener('touchend', e => { const now = Date.now(); if (now - lastEnd < 350) stop(e); lastEnd = now; }, { passive: false });
   reset();
 
+  // 加入主畫面教學：開始畫面左上角按鈕；第一次自動跳出
+  const hs = document.getElementById('hs'), hsBtn = document.getElementById('hsBtn');
+  const standalone = navigator.standalone || matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches;
+  const openHs = () => { hs.style.display = 'flex'; };
+  if (hs && hsBtn) {
+    hsBtn.addEventListener('click', openHs);
+    document.getElementById('hsOk').addEventListener('click', () => { hs.style.display = 'none'; try { localStorage.setItem('pbh_hs', '1'); } catch (e) {} });
+    ['touchstart', 'touchend', 'pointerdown'].forEach(n => { hs.addEventListener(n, e => e.stopPropagation(), { passive: true }); hsBtn.addEventListener(n, e => e.stopPropagation(), { passive: true }); });
+  }
+  let hsAuto = false;
   // 絕招能用時變色發光；「換」顯示目前武器顏色
   const bU = document.getElementById('bUlt'), bS = document.getElementById('bSwap');
   let lastU = null, lastW = null;
@@ -85,6 +95,8 @@
     const w = G.weapon || 'water';
     if (w !== lastW) { lastW = w; bS.style.setProperty('--c', (WEAPONS[w] && WEAPONS[w].color) || '#7ff3ff'); bS.style.display = G.weapons && G.weapons.length > 1 ? '' : 'none'; }
     if (G.weapons && (G.weapons.length > 1) !== (bS.style.display !== 'none')) lastW = null;
+    if (hsBtn) { const show = G.mode === 'title' && !standalone && IS_TOUCH; hsBtn.style.display = show ? 'block' : 'none';
+      if (show && !hsAuto) { hsAuto = true; let seen = false; try { seen = localStorage.getItem('pbh_hs') === '1'; } catch (e) {} if (!seen) setTimeout(openHs, 600); } }
     setTimeout(tick, 120);
   })();
 })();

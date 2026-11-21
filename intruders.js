@@ -3,7 +3,7 @@ const INTRUDERS = {
   rhino: { name: '犀牛怪人', hp: 14, w: 44, h: 60, lines: ['閃開閃開～犀牛衝鋒！', '哼！擋我者死！'], ko: '嗚哇——我記住你了！' },
   typhoon: { name: '颱風怪人', hp: 16, w: 44, h: 60, lines: ['呼～呼～把垃圾吹滿街！', '颱風天最愛亂丟東西啦！'], ko: '我…我還會再來的～' },
 };
-G.intruderTimer = 2100;
+G.intruderTimer = 900;
 
 function endIntruder() { G.intruder = null; Audio8.stopSfx('siren', 'gas'); }
 function floorAt(x, fallback) {
@@ -28,7 +28,7 @@ function updateIntruder() {
   const P = G.player;
   if (!G.intruder) {
     if (G.cameo || --G.intruderTimer > 0) return;
-    G.intruderTimer = 2400 + Math.floor(rnd(0, 1500));
+    G.intruderTimer = 1200 + Math.floor(rnd(0, 900)); // 怪人更常亂入
     if (G.level.arena && P.x > G.level.arena.x0 - 200) return; // 魔王房附近不亂入
     spawnIntruder(Math.random() < 0.5 ? 'rhino' : 'typhoon');
     return;

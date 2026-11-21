@@ -204,10 +204,19 @@ class Boss {
         if (this.st > 140) this.next('idle'); break;
       case 'meteor':
         fly(120); this.cast = 10;
-        if (this.st === 1) { this.mx = clamp(P.cx, this.ax0 + 30, this.ax1 - 30); FX('warn', this.mx, this.floorY, { opts: { size: 2.2, warningDuration: 1 } }); floatText(this.cx, this.y - 10, '流星魔法！', '#ff8a8a', true); Audio8.sfx('siren'); }
-        if (this.st === 40) { FX('meteor', this.mx, this.floorY, { opts: { size: 0.6 } }); }
-        if (this.st === 78) { G.shake = 14; Audio8.sfx('explode'); G.flash = 4; if (Math.abs(P.cx - this.mx) < 40 && P.y + P.h > this.floorY - 30) P.hurt(4, this.mx, '流星直擊！'); }
-        if (this.st > 110) this.next('idle'); break;
+        // 流星雨：至少 5 顆（後半 7 顆），一顆接一顆：先出現鎖定標記，再快速斜斜砸下來
+        if (this.st === 1) {
+          const n = this.phase2 ? 7 : 5, xs = [clamp(P.cx, this.ax0 + 24, this.ax1 - 24)];
+          while (xs.length < n) { const x = rnd(this.ax0 + 24, this.ax1 - 24); if (xs.every(o => Math.abs(o - x) > 40) || xs.length > 20) xs.push(x); }
+          this.meteors = xs.map((x, i) => ({ x, t0: 1 + i * 13 }));
+          floatText(this.cx, this.y - 10, '流星雨魔法！', '#ff8a8a', true); Audio8.sfx('siren');
+        }
+        for (const m of this.meteors || []) {
+          if (this.st === m.t0) FX('warn', m.x, this.floorY, { opts: { size: 1.2 } });
+          if (this.st === m.t0 + 26) FX('meteor', m.x, this.floorY, { opts: { size: 0.6 }, fall: 20 });
+          if (this.st === m.t0 + 46) { G.shake = Math.max(G.shake, 9); Audio8.sfx('explode', 0.02); G.flash = 3; if (Math.abs(P.cx - m.x) < 34 && P.y + P.h > this.floorY - 30) P.hurt(4, m.x, '流星直擊！'); }
+        }
+        if (this.meteors && this.st > this.meteors[this.meteors.length - 1].t0 + 70) { this.meteors = null; this.next('idle'); } break;
     }
     if (this.cast) this.cast--;
   }

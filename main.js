@@ -38,7 +38,8 @@ addEventListener('resize', resize); resize();
 
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg?v=11211755'; });
+const LOAD = { n: 0, done: 0 }; // 讀取進度（成功或失敗都算完成，不會卡住）
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { IMG[k] = im; LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'gpt-' + k + '.jpg?v=11211921'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
 // 去紫邊：只處理貼著透明區、而且「非常接近洋紅」的邊緣像素（不會吃掉粉紅、紫色的衣服頭髮）
@@ -73,7 +74,30 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.webp?v=11211755'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'ui-' + k + '.webp?v=11211921'; });
+// 全部讀完（人物圖＋介面圖＋背景）＝ 1；超過 25 秒也直接放行
+const LOAD_T0 = performance.now();
+function loadProgress() { const p = SPR.progress * 0.6 + (LOAD.n ? LOAD.done / LOAD.n : 1) * 0.4; return performance.now() - LOAD_T0 > 25000 ? 1 : Math.min(1, p); }
+let loadShown = 0; // 顯示用的進度（平滑追上）
+const LOAD_TIPS = ['小提示：沖掉便便，可以補充魔王武器的能量！', '小提示：按住「射」可以集氣，放開發射大水砲！', '小提示：打倒關主，就能吸收他的能力！', '小提示：能量滿了按「絕」，全場清光光！', '小提示：手機「加入主畫面」，全螢幕更好玩！'];
+function drawLoading() {
+  const t = G.t, p = loadProgress(); loadShown += (p - loadShown) * 0.15; if (p >= 1) loadShown = Math.min(1, loadShown + 0.03);
+  const g = sctx.createLinearGradient(0, 0, 0, VH * K); g.addColorStop(0, '#141a3c'); g.addColorStop(1, '#05060f'); sctx.fillStyle = g; sctx.fillRect(0, 0, screen.width, screen.height);
+  for (let i = 0; i < 70; i++) { const x = (i * 83 + t * (0.3 + (i % 3) * 0.25)) % VW, y = (i * 47) % VH; sctx.fillStyle = i % 6 ? '#39407a' : '#ffe36a'; sctx.fillRect(x * K, y * K, K, K); }
+  // 標題字：一個字一個字上下跳
+  const title = '小編出擊！'; for (let i = 0; i < title.length; i++) { const dy = Math.sin(t / 8 - i * 0.7) * 4; txt(title[i], 128 + i * 36, 52 + dy, 28, '#ffe36a', 'center', '#7a2a00'); }
+  txt('維護環境　你我一起來！', 200, 96, 10, '#9ff3ff', 'center', '#0a1030');
+  // 洛克人式能量條：金框＋一格一格的水藍色格子，前端有水滴
+  const bx = 80, by = 132, bw = 240, bh = 16, n = 24, sw = (bw - 8) / n, fill = Math.floor(loadShown * n);
+  box(bx, by, bw, bh, '#0b0e22', '#ffd23f');
+  for (let i = 0; i < n; i++) { const x = bx + 4 + i * sw; sctx.fillStyle = i < fill ? (i % 2 ? '#3ad6ff' : '#7ff3ff') : '#1c2246'; sctx.fillRect(x * K, (by + 4) * K, (sw - 1) * K, (bh - 8) * K); if (i < fill) { sctx.fillStyle = 'rgba(255,255,255,0.55)'; sctx.fillRect(x * K, (by + 4) * K, (sw - 1) * K, 1.5 * K); } }
+  const dx = bx + 4 + Math.max(0, fill) * sw, dy2 = by - 7 + Math.abs(Math.sin(t / 5)) * -3;
+  sctx.fillStyle = '#16111f'; sctx.beginPath(); sctx.arc(dx * K, (dy2 + 3) * K, 4.2 * K, 0, 7); sctx.fill(); sctx.beginPath(); sctx.moveTo((dx - 3.6) * K, (dy2 + 1.6) * K); sctx.lineTo(dx * K, (dy2 - 5) * K); sctx.lineTo((dx + 3.6) * K, (dy2 + 1.6) * K); sctx.fill();
+  sctx.fillStyle = '#5fd8ff'; sctx.beginPath(); sctx.arc(dx * K, (dy2 + 3) * K, 3 * K, 0, 7); sctx.fill(); sctx.beginPath(); sctx.moveTo((dx - 2.6) * K, (dy2 + 1.8) * K); sctx.lineTo(dx * K, (dy2 - 3.6) * K); sctx.lineTo((dx + 2.6) * K, (dy2 + 1.8) * K); sctx.fill();
+  sctx.fillStyle = '#ffffff'; sctx.fillRect((dx - 1.5) * K, (dy2 + 1) * K, 1.2 * K, 1.2 * K);
+  txt('NOW LOADING' + '...'.slice(0, (t >> 4) % 4), 80, 118, 9, '#ffffff', 'left', '#0a1030'); txt(Math.round(loadShown * 100) + '%', 320, 118, 9, '#ffe36a', 'right', '#0a1030');
+  txt(LOAD_TIPS[Math.floor(t / 150) % LOAD_TIPS.length], 200, 168, 8, '#d8def0', 'center', '#0a1030');
+}
 // 宣導標語：解決狀況時在畫面上方滑入（每關每種只出現一次）
 const TIPS = {
   poop: '遛狗不撿狗便便，依《廢棄物清理法》\n可罰新台幣 1,200～6,000 元！',
@@ -105,10 +129,10 @@ const MIDIMG = {}, PITIMG = {}, SELHEAD = [];
   let segs = [], s = -1; col.forEach((v, i) => { if (v && s < 0) s = i; if (!v && s >= 0) { segs.push([s, i]); s = -1; } }); if (s >= 0) segs.push([s, c.width]);
   segs = segs.filter(g => g[1] - g[0] > c.width / 40).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 5).sort((a, b) => a[0] - b[0]);
   for (const [a, b] of segs) { let top = c.height, bot = 0; for (let j = 0; j < c.height; j++) for (let i = a; i < b; i += 2) if (d[(j * c.width + i) * 4 + 3] > 0) { if (j < top) top = j; bot = j; break; } const o = document.createElement('canvas'); o.width = b - a; o.height = bot - top + 1; o.getContext('2d').drawImage(c, a, top, b - a, bot - top + 1, 0, 0, b - a, bot - top + 1); SELHEAD.push(o); }
-} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11211755'; }
+} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11211921'; }
 [1, 2, 3, 4].forEach(n => {
-  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11211755';
-  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11211755';
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11211921';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11211921';
 });
 
 // ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
@@ -116,13 +140,13 @@ const CAMEOS = {
   m: { name: '中央山脈超人', fly: 'cm_fly', idle: 'cm_wave', throw: 'cm_throw', lines: ['愛護山林，垃圾帶下山！', '小編加油！這個給你！', '保護環境，從撿起腳邊的垃圾開始！'] },
   s: { name: '針筒超人', fly: 'cs_fly', idle: 'cs_thumb', throw: 'cs_throw', lines: ['清除積水，預防登革熱！', '打起精神！幫你補充能量！', '垃圾堆積會孳生病媒蚊喔！'] },
 };
-G.cameoTimer = 1500;
+G.cameoTimer = 600;
 function updateCameo() {
   if (G.mode !== 'play' || script) return;
   const P = G.player;
   if (!G.cameo) {
     if (--G.cameoTimer > 0) return;
-    G.cameoTimer = 2400 + Math.floor(rnd(0, 1800));
+    G.cameoTimer = 1100 + Math.floor(rnd(0, 800)); // 超人更常出現
     const id = Math.random() < 0.5 ? 'm' : 's', dir = Math.random() < 0.5 ? 1 : -1, gift = true;
     G.cameo = { id, gift, dir, t: 0, x: G.camX + (dir > 0 ? -40 : VW + 40), y: gift ? 62 : rnd(78, 100), say: '', sayT: 0, phase: 'in' };
     Audio8.sfx('warp');
@@ -165,12 +189,13 @@ function updateMumble() {
   if (G.heroSay && --G.heroSay.t <= 0) G.heroSay = null;
   if (P.slipT === 20) { G.heroSay = { text: '咦…我好像踩到了什麼…', t: 110 }; return; }
   if (--G.mumbleT > 0) return;
-  G.mumbleT = 700 + Math.floor(rnd(0, 600));
+  G.mumbleT = 130 + 120; // 碎念：每句講約 2 秒，停 2 秒就換下一句
   const near = G.items.filter(i => (i.type === 'poop' || i.type === 'big') && Math.abs(i.cx - P.cx) < 220).length;
   const pool = ['我才不是大叔！我才 45 歲！', '我肚子好餓…等等去吃夜市。', '這邊也太髒了吧…', '我好想下班…', '今天適合吃薑母鴨。', '我考卷還沒改完…', 'EMI 計畫還沒寫啊…', '今天的影片還沒做…', '我肚子好餓…', '我老婆又嫌我胖了…', '我痛風發作…'];
   if (near >= 3) pool.push('狗屎好多…到底是誰不撿！', '狗屎好多…', '狗屎好多…');
   if (G.clean / Math.max(1, G.level.total) > 0.5) pool.push('乾淨多了，心情真好！');
-  G.heroSay = { text: pool[Math.floor(rnd(0, pool.length))], t: 130 };
+  let text; do { text = pool[Math.floor(rnd(0, pool.length))]; } while (text === G.lastMumble && pool.length > 1);
+  G.lastMumble = text; G.heroSay = { text, t: 130 };
 }
 function drawHeroSay() {
   const s = G.heroSay; if (!s || !G.zc || G.dialog) return;
@@ -266,15 +291,16 @@ function* talk(lines) {
     yield () => G.dialog === null;
   }
 }
-function* playVideo(src, maxSec = 12) {
+function* playVideo(src, maxSec = 12, audioName = null) {
   const v = document.createElement('video');
-  v.src = src; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.muted = Audio8.isMuted(); v.preload = 'auto';
+  // 有分離的音軌就讓影片靜音（一定能自動播），聲音由音樂播放器同步播出
+  v.src = src; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.muted = audioName ? true : Audio8.isMuted(); v.preload = 'auto';
   // 影片疊在遊戲畫面上方，用淡入淡出銜接（不再硬切）
   Object.assign(v.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', objectFit: 'contain', background: 'rgba(0,0,0,0.85)', zIndex: 5, opacity: '0', transition: 'opacity .45s ease', pointerEvents: 'none' });
   // iPhone 不會預先載入影片：直接放進畫面並播放；有聲音被擋就改成靜音再播
   let state = 'load';
   document.body.appendChild(v);
-  const show = () => { if (state === 'load') { state = 'play'; setTimeout(() => { v.style.opacity = '1'; }, 30); } };
+  const show = () => { if (state === 'load') { state = 'play'; if (audioName) Audio8.oneShot(audioName); setTimeout(() => { v.style.opacity = '1'; }, 30); } };
   v.addEventListener('playing', show);
   v.addEventListener('error', () => { state = 'fail'; });
   v.addEventListener('ended', () => { state = 'done'; });
@@ -295,7 +321,7 @@ function loadLevel(n) {
   const t = D.map.map(r => r.split(''));
   const L = { def: D, theme: D.theme, w: t[0].length, h: t.length, t, gateOpen: false, gateAnim: 0, yoku: [], tt: 0 };
   G.tipQ = []; G.tipsShown = new Set(); G.curTip = null;
-  G.cameo = null; G.heroSay = null; G.cameoTimer = 1500; G.mumbleT = 500; G.intruder = null; G.intruderTimer = 2100;
+  G.cameo = null; G.heroSay = null; G.cameoTimer = 600; G.mumbleT = 120; G.intruder = null; G.intruderTimer = 900;
   Object.assign(G, { splashes: [], ultraBeam: null, ultraWave: null, ultraAura: 0, ultraLift: 0, parts: [], texts: [], bullets: [], eshots: [], items: [], enemies: [], npcs: [], platforms: [], boss: null, clean: 0, dynPoops: 0, checkpoint: null, dark: 0, freeze: false });
   if (window.VFX) VFX.clear();
   let total = 0, start = { x: 40, y: 176 }, npcI = 0, yokuCells = [];
@@ -384,7 +410,7 @@ function* bossSequence() {
   G.mode = 'bossIntro';
   // 魔王出場動畫：先試 Grok 生成的影片，沒有就用遊戲內動畫
   // 魔王出場動畫（Grok 影片，淡入淡出）
-  yield* playVideo('video-boss' + G.stage + '.mp4', 8);
+  yield* playVideo('video-boss' + G.stage + '.mp4', 8, 'vintro' + G.stage);
   Audio8.music(D.bossMusic || 'boss'); Audio8.sfx('siren'); G.warnT = 120; yield 60;
   G.boss = new Boss(D.boss, L.bossSpawn.x, L.arena && 11 * TS);
   yield () => G.boss.entrance();
@@ -530,7 +556,7 @@ function openCert() {
   ['touchstart', 'touchend', 'pointerdown'].forEach(n => d.addEventListener(n, e => e.stopPropagation(), { passive: true }));
   inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') d.querySelector('#cMake').click(); });
   d.querySelector('#cMake').onclick = () => { certName = inp.value.trim(); try { localStorage.setItem('pbh_name', certName); } catch (e) {} certCv = makeCert(certName); Audio8.sfx('select'); inp.blur(); };
-  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11211755'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
+  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11211921'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
   d.querySelector('#cBack').onclick = () => { d.remove(); certUI = null; goTitle(); };
 }
 function drawCertScreen() {
@@ -625,7 +651,7 @@ function update() {
   }
   stepScript();
   switch (G.mode) {
-    case 'boot': if (SPR.progress >= 1 && (I.pressed.ok || I.pressed.left || I.pressed.right)) { Audio8.init(); goTitle(); } break; // 人物圖讀完才能開始
+    case 'boot': if (loadProgress() >= 1 && loadShown > 0.98) goTitle(); break; // 全部讀完就直接進開始畫面
     case 'title': {
       const opts = titleOptions();
       if (I.pressed.up) { G.menu = (G.menu + opts.length - 1) % opts.length; Audio8.sfx('cursor'); }
@@ -1213,14 +1239,15 @@ function drawCutin() {
 
 // ---------- 繪製：各畫面 ----------
 function drawTitle() {
+  if (G.mode === 'boot') return drawLoading();
   sctx.fillStyle = '#07080f'; sctx.fillRect(0, 0, screen.width, screen.height);
   const im = IMG.title;
   if (im) { const s = Math.max(VW / im.width, VH / im.height); const w = im.width * s, h = im.height * s; sctx.drawImage(im, (VW - w) / 2 * K, (VH - h) / 2 * K, w * K, h * K); }
   const g = sctx.createLinearGradient(0, 120 * K, 0, VH * K); g.addColorStop(0, 'rgba(7,8,15,0)'); g.addColorStop(1, 'rgba(7,8,15,0.92)'); sctx.fillStyle = g; sctx.fillRect(0, 0, VW * K, VH * K);
   const bob = Math.sin(G.t / 30) * 2;
   if (!uiImg('ui_logo', 200, 42 + bob, 250)) { txt('小編出擊！', 200, 18 + bob, 34, '#ffe36a', 'center', '#5a1d00'); txt('維護環境 你我一起來！', 200, 58 + bob, 9, '#fff', 'center'); }
-  if (G.mode === 'boot' && SPR.progress < 1) { const pr = SPR.progress; box(120, 176, 160, 12, 'rgba(10,12,28,0.85)', '#ffd23f'); sctx.fillStyle = '#7dffa0'; sctx.fillRect(122 * K, 178 * K, 156 * pr * K, 8 * K); txt('讀取中… ' + Math.round(pr * 100) + '%', 200, 162, 10, '#fff', 'center'); return; }
-  if (G.mode === 'boot') { if ((G.t >> 5) % 2) txt(IS_TOUCH ? '點一下畫面開始' : '按任意鍵開始（Enter / Z）', 200, 180, 11, '#fff', 'center'); return; }
+  // （讀取畫面在 drawTitle 開頭處理）
+
   if (G.mode === 'help') { drawHelp(); return; }
   const opts = titleOptions();
   opts.forEach((o, i) => txt((i === G.menu ? '▶ ' : '　') + o[0], 150, 150 + i * 16, 11, i === G.menu ? '#ffe36a' : '#ddd'));
@@ -1261,6 +1288,12 @@ function drawSelect() {
     if (h) { const k = Math.min(F / h.width, F / h.height); sctx.drawImage(h, (C[0] - h.width * k / 2) * K, (y + F - h.height * k) * K, h.width * k * K, h.height * k * K); }
     else portrait('hero', x, y, F, false);
     txt('小編', C[0], y + F + 4, 7, '#7fe6ff', 'center'); }
+  // 選到的關主講一句話（打字效果）
+  if (G.selSayI !== G.sel) { G.selSayI = G.sel; const q = SELECT_QUOTES[G.sel]; G.selSayText = q[Math.floor(rnd(0, q.length))]; G.selSayT0 = G.t; }
+  { const Dq = LEVEL_DATA[G.sel], n = Math.min(G.selSayText.length, Math.floor((G.t - G.selSayT0) / 2)), col = ['#ff9a3a', '#ff7ad9', '#b07aff', '#ff4552'][G.sel];
+    const [qx, qy] = [[14, 150], [234, 36], [228, 150], [234, 152]][G.sel], qw = 158;
+    box(qx, qy, qw, 30, 'rgba(10,12,28,0.94)', col); txt(Dq.bossName, qx + 6, qy + 4, 7, col, 'left'); txt(G.selSayText.slice(0, n), qx + 6, qy + 16, 7.5, '#ffffff', 'left');
+    if (n < G.selSayText.length && n % 2 === 0 && (G.t - G.selSayT0) % 4 === 0) Audio8.sfx('blip', 0.05); }
   const D = LEVEL_DATA[G.sel];
   txt(D.name, 40, 196, 8, '#ffffff', 'center'); txt(stageUnlocked(G.sel + 1) ? (IS_TOUCH ? '按「射」出發' : 'Z 出發') : '打倒三個魔王解鎖', 40, 208, 6, '#aab', 'center');
   txt('水槍 Lv.' + (G.gunLv + 1), 360, 196, 7, '#9ff3ff', 'center');
@@ -1409,6 +1442,7 @@ function render() {
   if (G.letterbox > 0.01) { sctx.fillStyle = '#000'; sctx.fillRect(0, 0, screen.width, 16 * K * G.letterbox); sctx.fillRect(0, screen.height - 16 * K * G.letterbox, screen.width, 16 * K * G.letterbox); }
   drawTexts(); drawCameoSay(); if (typeof drawIntruderSay === 'function') drawIntruderSay(); drawHeroSay();
   if (m !== 'ultra' && G.letterbox < 0.5) { drawHUD(); drawTip(); }
+  else if (G.boss && !G.boss.defeated && SPR.has('hud_hp')) { hudBarV(4, 4, G.player.hp, G.player.maxHp, '#ffd23f'); hudBarV(20, 4, G.boss.hp, G.boss.maxHp, '#ff5a8a'); } // 放大絕時魔王血條不消失，看得到扣多少
   if (G.warnT > 0 && (G.warnT >> 3) % 2) { sctx.fillStyle = 'rgba(200,0,30,0.35)'; sctx.fillRect(0, 0, VW * K, VH * K); if (!uiImg('ui_warning', 200, 104, 300)) { sctx.fillStyle = 'rgba(200,0,30,0.75)'; sctx.fillRect(0, 90 * K, VW * K, 40 * K); txt('⚠ WARNING ⚠', 200, 96, 18, '#fff', 'center', '#600'); } txt(G.level.def.bossName + ' 出現！', 200, 136, 10, '#ffe', 'center', '#600'); }
   if (m === 'ready' && (G.readyT >> 3) % 2) { if (!uiImg('ui_ready', 200, 104, 130)) txt('READY', 200, 100, 20, '#fff', 'center'); }
   if (m === 'bossDown' && G.winPose) uiImg('ui_clear', 200, 70, 260, Math.min(1, (G.t % 1000) / 10));

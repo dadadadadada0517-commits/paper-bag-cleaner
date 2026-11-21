@@ -215,8 +215,15 @@ const Audio8 = (() => {
     const done = () => { if (ext.el !== el) el.pause(); el.muted = muted; };
     if (p && p.then) p.then(done, done); else done();
   }
+  // 魔王出場影片的聲音：用已解鎖的音樂播放器播（iPhone 會擋影片自己的聲音）
+  function oneShot(name) {
+    if (!ac) init();
+    stopMusic(); curName = name;
+    const el = bgmEl(); el.loop = false; el.src = 'music-' + name + '.mp3'; bgmName = name;
+    ext.el = el; el.muted = muted; el.volume = 0.9; el.currentTime = 0; el.play().catch(() => {});
+  }
   function playEl(name) {
-    const el = bgmEl();
+    const el = bgmEl(); el.loop = true;
     if (cur) { if (timer) clearInterval(timer); timer = null; cur = null; }
     if (bgmName !== name) { el.src = 'music-' + name + '.mp3'; bgmName = name; } else el.currentTime = 0;
     ext.el = el; el.muted = muted; el.volume = 0; el.play().catch(() => {});
@@ -298,7 +305,7 @@ const Audio8 = (() => {
     boing() { tone('sine', 220, 660, 0.12, 0.25); },
   };
   // 外部音效（ElevenLabs 生成，放在 assets/sfx/<名稱>.mp3）優先，沒有就用合成音
-  const SFX_VOL = { shoot: 1, victory: 1, getweapon: 1, cursor: 0.6, pop: 0.7, heal: 0.7, blip: 0.5, step: 0.5, explode: 0.6, dash: 0.6, clink: 0.6, magic: 0.7 };
+  const SFX_VOL = { shoot: 1, victory: 1, getweapon: 1, cursor: 1, pop: 0.7, heal: 0.7, blip: 0.5, step: 0.5, explode: 0.6, dash: 0.6, clink: 0.6, magic: 0.7 };
   function loadExtSfx() {
     if (location.protocol === 'file:') return;
     fetch('sfx-list.json').then(r => r.ok ? r.json() : []).catch(() => []).then(list => list.forEach(n => fetch('sfx-' + n + '.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && ac.decodeAudioData(b)).then(buf => { if (buf) ext.sfx[n] = buf; }).catch(() => {})));
@@ -320,5 +327,5 @@ const Audio8 = (() => {
     if (ext.sfx[name]) playExt(name); else SFX[name]();
   }
 
-  return { init, music, stopMusic, sfx, stopSfx, hasExt: n => !!ext.sfx[n], toggleMute, isMuted: () => muted, get current() { return curName; } };
+  return { init, music, oneShot, stopMusic, sfx, stopSfx, hasExt: n => !!ext.sfx[n], toggleMute, isMuted: () => muted, get current() { return curName; } };
 })();

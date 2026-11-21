@@ -68,6 +68,15 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
   </div>
   <div class="menu" data-k="start">選單</div>
 </div>
+<div id="hsBtn" style="display:none;position:fixed;left:calc(env(safe-area-inset-left) + 10px);top:10px;z-index:8;padding:7px 12px;border-radius:16px;font:900 14px 'PingFang TC','Microsoft JhengHei',sans-serif;color:#05070f;background:#ffd65c;border:3px solid #fff;box-shadow:0 3px 0 rgba(0,0,0,.4)">📲 全螢幕玩法</div>
+<div id="hs" class="ov"><div class="box">
+<div class="big">📲 加入主畫面，全螢幕更好玩！</div>
+<div class="step"><span class="num">?</span><b>為什麼要加入主畫面？</b><small>從主畫面的圖示打開，就不會有網址列和分頁列，遊戲畫面會變大很多、更漂亮，按鍵也更好按；而且像 App 一樣，點一下就能玩。</small></div>
+<div class="step"><span class="num">1</span><b>iPhone（Safari）</b><small>按畫面下方（或上方）的「分享」按鈕 <b style="color:#7ff3ff">⬆︎</b> → 往下滑，點「<b style="color:#7ff3ff">加入主畫面</b>」→ 右上角按「新增」。</small></div>
+<div class="step"><span class="num">2</span><b>Android（Chrome）</b><small>按右上角「<b style="color:#7ff3ff">⋮</b>」→ 點「<b style="color:#7ff3ff">加到主畫面</b>」或「<b style="color:#7ff3ff">安裝應用程式</b>」→ 新增。</small></div>
+<div class="step"><span class="num">3</span><b>從主畫面打開</b><small>回到手機桌面，找到「小編出擊」的小編頭像圖示，點開、手機橫放，就是全螢幕囉！</small></div>
+<button class="okb" id="hsOk">知道了，開始玩！</button>
+</div></div>
 <div id="rot" class="ov"><div class="box">
 <div class="big">📱 請把手機轉成橫的</div>
 <div class="step warn" id="inappTip" style="display:none"><span class="num">!</span><b>請改用外部瀏覽器開啟</b><small>你現在是在 LINE／FB／IG／Google 等 App 裡面開啟。請點右上或右下角的「⋮」或「…」選單 →「在瀏覽器中開啟」（iPhone 用 Safari，Android 用 Chrome），音樂和音效才會正常。</small></div>
@@ -94,14 +103,14 @@ var ov=document.getElementById('inapp'),land=function(){return window.matchMedia
 document.getElementById('inappOk').addEventListener('click',function(){seen=true;try{sessionStorage.setItem('inappOk','1')}catch(e){}upd()})})();
 // 手機：第一次觸控就全螢幕＋鎖定橫向
 addEventListener('touchstart',function f(){try{if(!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(function(){screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(function(){})}).catch(function(){})}catch(e){}},{once:true,passive:true});</script>
-<script src="audio.js?v=11211755"></script>
-<script src="sprites.js?v=11211755"></script>
-<script src="sheets.js?v=11211755"></script>
-<script src="levels.js?v=11211755"></script>
-<script src="entities.js?v=11211755"></script>
-<script src="bosses.js?v=11211755"></script>
-<script src="main.js?v=11211755"></script>
-<script src="intruders.js?v=11211755"></script>
-<script src="touch.js?v=11211755"></script>
+<script src="audio.js?v=11211921"></script>
+<script src="sprites.js?v=11211921"></script>
+<script src="sheets.js?v=11211921"></script>
+<script src="levels.js?v=11211921"></script>
+<script src="entities.js?v=11211921"></script>
+<script src="bosses.js?v=11211921"></script>
+<script src="main.js?v=11211921"></script>
+<script src="intruders.js?v=11211921"></script>
+<script src="touch.js?v=11211921"></script>
 </body>
 </html>

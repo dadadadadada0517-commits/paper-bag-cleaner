@@ -39,7 +39,7 @@ function FX(name, x, y, o = {}) {
     case 'warn':
       G.parts.push({ x, y, vx: 0, vy: 0, life: 70, max: 70, c: '#ff303e', s: 1, g: 0, warn: true, r0: clamp(14 * k, 14, 38) }); return null;
     case 'meteor': // 自繪像素流星：從天而降，落地爆炸
-      G.parts.push({ x, y, vx: 0, vy: 0, life: 38, max: 38, c: '#ff7a24', s: 1, g: 0, meteor: true, k: Math.max(1.6, k) }); return null;
+      { const L = o.fall || 38; G.parts.push({ x, y, vx: 0, vy: 0, life: L, max: L, c: '#ff7a24', s: 1, g: 0, meteor: true, k: Math.max(1.6, k) }); } return null;
     case 'thunder': case 'zap':
       cloud(x, y, 0, 0, 3, 12 * k, 8, '#fff6c0'); sparks(x, y, col, 12, 3, 0); return null;
     case 'hole': case 'gate':
