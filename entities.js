@@ -205,6 +205,9 @@ class Player {
     if (this.landT > 0) this.landT--;
     if (this.onGround) { this.djump = true; this.airDash = true; this.dashJump = false; if (!wasGround) { this.landT = 5; Audio8.sfx('land'); sparks(this.cx, this.y + this.h, '#e8dcc0', 4, 1, 0.05); } }
     if (this.onSpike) this.hurt(3, this.cx + this.face, '好痛！');
+    if (this.onGround && !this.platform && !this.onSpike) { this.lastSafe = { x: this.x, y: this.y }; this.rescueRolled = false; } // 記住最後站穩的位置
+    // 掉進坑：25% 機率針筒超人衝下來救（魔王戰不救）
+    if (this.y > G.level.h * TS - 6 && !this.rescueRolled && !this.dead) { this.rescueRolled = true; if (this.lastSafe && !G.boss && !G.rescue && Math.random() < 0.25 && typeof startRescue === 'function') { startRescue(); return; } }
     if (this.y > G.level.h * TS + 20) { this.hp = 0; this.die(); }
     this.doShoot(I, A);
   }
