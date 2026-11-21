@@ -26,10 +26,10 @@ const buf = PX.canvas(VW * RS, VH * RS), ctx = buf.getContext('2d'); // 2 倍內
 let K = 3;
 function resize() {
   const dpr = window.devicePixelRatio || 1;
-  let k = Math.min(innerWidth * dpr / VW, innerHeight * dpr / VH);
-  if (k >= 2) k = Math.floor(k);
-  K = k; screen.width = Math.round(VW * K); screen.height = Math.round(VH * K);
-  screen.style.width = (screen.width / dpr) + 'px'; screen.style.height = (screen.height / dpr) + 'px';
+  // 畫面填滿整個螢幕（手機上按鍵疊在遊戲畫面上）
+  const s = Math.min(innerWidth / VW, innerHeight / VH);
+  K = Math.min(s * dpr, 8); screen.width = Math.round(VW * K); screen.height = Math.round(VH * K);
+  screen.style.width = Math.floor(VW * s) + 'px'; screen.style.height = Math.floor(VH * s) + 'px';
   sctx.imageSmoothingEnabled = false;
 }
 addEventListener('resize', resize); resize();
@@ -50,7 +50,7 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.png'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.webp'; });
 // 宣導標語：解決狀況時在畫面上方滑入（每關每種只出現一次）
 const TIPS = {
   poop: '遛狗不撿狗便便，依《廢棄物清理法》\n可罰新台幣 1,200～6,000 元！',
@@ -82,10 +82,10 @@ const MIDIMG = {}, PITIMG = {}, SELHEAD = [];
   let segs = [], s = -1; col.forEach((v, i) => { if (v && s < 0) s = i; if (!v && s >= 0) { segs.push([s, i]); s = -1; } }); if (s >= 0) segs.push([s, c.width]);
   segs = segs.filter(g => g[1] - g[0] > c.width / 40).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 5).sort((a, b) => a[0] - b[0]);
   for (const [a, b] of segs) { let top = c.height, bot = 0; for (let j = 0; j < c.height; j++) for (let i = a; i < b; i += 2) if (d[(j * c.width + i) * 4 + 3] > 0) { if (j < top) top = j; bot = j; break; } const o = document.createElement('canvas'); o.width = b - a; o.height = bot - top + 1; o.getContext('2d').drawImage(c, a, top, b - a, bot - top + 1, 0, 0, b - a, bot - top + 1); SELHEAD.push(o); }
-} catch (e) {} }; im.src = 'art-sel_heads.png'; }
+} catch (e) {} }; im.src = 'art-sel_heads.webp'; }
 [1, 2, 3, 4].forEach(n => {
-  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.png';
-  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.png';
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp';
 });
 
 // ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
@@ -921,7 +921,6 @@ function drawHUD() {
     hudBarV(4, 4, P.hp, P.maxHp, '#ffd23f');
     if (G.boss && (G.mode === 'boss' || G.mode === 'bossIntro' || G.mode === 'bossDown') && (G.mode !== 'bossIntro' || G.bossBarFill != null)) {
       hudBarV(20, 4, G.boss.hp, G.boss.maxHp, '#ff5a8a', G.bossBarFill != null ? G.bossBarFill : null);
-      sctx.globalAlpha = 0.9; portrait(G.boss.kind, 21, 72, 14, false); sctx.globalAlpha = 1;
     }
     const pct = Math.min(1, G.clean / Math.max(1, L.total)), req = L.req / Math.max(1, L.total);
     const cb = hudBarH('hud_clean', 300, 4, pct, pct >= req ? '#2fd07a' : '#1f8fd8', pct >= req ? '#9dffc4' : '#8fe3ff');
@@ -1073,7 +1072,7 @@ function drawTitle() {
   if (G.mode === 'help') { drawHelp(); return; }
   const opts = titleOptions();
   opts.forEach((o, i) => txt((i === G.menu ? '▶ ' : '　') + o[0], 150, 150 + i * 16, 11, i === G.menu ? '#ffe36a' : '#ddd'));
-  txt('M：靜音　F：特效品質　' + (window.VFX ? '特效庫：00GameDevs ✔' : '特效：簡易（請用 http 開啟）'), 200, 212, 7, '#9aa', 'center');
+  txt('M：靜音　F：特效品質　手機請橫放，左邊蘑菇頭移動', 200, 212, 7, '#9aa', 'center');
 }
 function drawHelp() {
   box(30, 72, 340, 150, 'rgba(10,12,28,0.95)');
@@ -1190,7 +1189,7 @@ function drawCredits() {
   const t = G.credT, y0 = 230 - t * 0.35;
   const tt = Object.values(save.stats).reduce((a, s) => a + (s.time || 0), 0);
   const cl = Object.values(save.stats).reduce((a, s) => a + (s.clean || 0), 0);
-  const L = ['小編出擊！', '', '— STAFF —', '主角　小編（紙袋大叔）', '最終魔王　豪鬼主任', '', '美術　GPT 生圖＋程式像素繪製', '特效　00GameDevs 特效庫（MIT）', '音樂・音效　晶片音源合成（可替換 Suno／ElevenLabs）', '', '— 你的成績 —', `總遊玩時間　${Math.floor(tt / 3600)} 分 ${Math.floor(tt / 60) % 60} 秒`, `清掃數量　${cl}`, `馴服狗狗　${G.tamed} 隻`, `倒下次數　${G.deaths}`, '', '遛狗請牽繩，便便請撿走！', '', 'THE END'];
+  const L = ['小編出擊！', '', '— STAFF —', '主角　小編（紙袋大叔）', '最終魔王　豪鬼主任', '', '美術　GPT 生圖＋程式像素繪製', '特效　自製像素特效', '音樂　Suno　音效　ElevenLabs', '', '— 你的成績 —', `總遊玩時間　${Math.floor(tt / 3600)} 分 ${Math.floor(tt / 60) % 60} 秒`, `清掃數量　${cl}`, `馴服狗狗　${G.tamed} 隻`, `倒下次數　${G.deaths}`, '', '遛狗請牽繩，便便請撿走！', '', 'THE END'];
   L.forEach((l, i) => { const y = y0 + i * 20; if (i === 0 && uiImg('ui_logo', 200, y + 10, 200)) return; if (l === 'THE END' && uiImg('ui_end', 200, y + 20, 220)) return; txt(l, 200, y, i === 0 ? 20 : l === 'THE END' ? 22 : 10, i === 0 || l === 'THE END' ? '#ffe36a' : '#fff', 'center'); });
 }
 function drawPause() {

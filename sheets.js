@@ -155,7 +155,7 @@ const SPR = (() => {
         if (file === 'dogs') Object.keys(f).filter(n => n.startsWith('d_')).forEach(n => recolor(n, 'W' + n, (r, g, b) => { const l = (r + g + b) / 3; return [Math.min(255, l * 0.5 + 125), Math.min(255, l * 0.5 + 123), Math.min(255, l * 0.5 + 130)]; }));
       };
       img.onerror = () => { loaded++; };
-      img.src = (spec.dir || 'sheets') + '-' + file + '.png';
+      img.src = (spec.dir || 'sheets') + '-' + file + '.webp';
     }
   }
   function has(n) { return !!f[n]; }
