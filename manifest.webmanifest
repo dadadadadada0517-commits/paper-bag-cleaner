@@ -1,0 +1,10 @@
+{
+  "name": "小編出擊！維護環境 你我一起來！",
+  "short_name": "小編出擊",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#07080f",
+  "theme_color": "#07080f",
+  "icons": [{ "src": "gpt-p_hero.jpg", "sizes": "512x512", "type": "image/jpeg" }]
+}

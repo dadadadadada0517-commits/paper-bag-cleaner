@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="小編出擊">
+<meta name="theme-color" content="#07080f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="gpt-p_hero.jpg">
 <title>小編出擊！</title>
 <style>
 @font-face { font-family: "Cubic11"; src: url("font-Cubic_11.woff2") format("woff2"); font-display: block; }
@@ -18,7 +25,7 @@ canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edge
 #touch.on { display: block; }
 #touch, #touch *, canvas { touch-action: none; -webkit-touch-callout: none; }
 #touch .jz { position: absolute; left: 0; bottom: 0; width: 42%; height: 78%; pointer-events: auto; }
-#touch .joy { position: absolute; left: calc(env(safe-area-inset-left) + 96px); top: calc(100% - 96px); width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; pointer-events: none;
+#touch .joy { position: absolute; left: max(70px, calc(var(--lc, 192px) / 2)); top: calc(100% - 100px); width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle, rgba(10,14,30,.25) 40%, rgba(10,14,30,.45)); border: 3px solid rgba(255,255,255,.35); box-shadow: 0 0 0 2px rgba(0,0,0,.25); opacity: .75; transition: opacity .15s; }
 #touch .joy.act { opacity: 1; }
 #touch .knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
@@ -87,14 +94,14 @@ var ov=document.getElementById('inapp'),land=function(){return window.matchMedia
 document.getElementById('inappOk').addEventListener('click',function(){seen=true;try{sessionStorage.setItem('inappOk','1')}catch(e){}upd()})})();
 // 手機：第一次觸控就全螢幕＋鎖定橫向
 addEventListener('touchstart',function f(){try{if(!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(function(){screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(function(){})}).catch(function(){})}catch(e){}},{once:true,passive:true});</script>
-<script src="audio.js?v=11211413"></script>
-<script src="sprites.js?v=11211413"></script>
-<script src="sheets.js?v=11211413"></script>
-<script src="levels.js?v=11211413"></script>
-<script src="entities.js?v=11211413"></script>
-<script src="bosses.js?v=11211413"></script>
-<script src="main.js?v=11211413"></script>
-<script src="intruders.js?v=11211413"></script>
-<script src="touch.js?v=11211413"></script>
+<script src="audio.js?v=11211443"></script>
+<script src="sprites.js?v=11211443"></script>
+<script src="sheets.js?v=11211443"></script>
+<script src="levels.js?v=11211443"></script>
+<script src="entities.js?v=11211443"></script>
+<script src="bosses.js?v=11211443"></script>
+<script src="main.js?v=11211443"></script>
+<script src="intruders.js?v=11211443"></script>
+<script src="touch.js?v=11211443"></script>
 </body>
 </html>

@@ -174,7 +174,7 @@ class Boss {
     const fly = (sp) => { const k = this.t / sp; this.tx = midX + Math.sin(k) * 140; this.ty = 46 + Math.sin(k * 2) * 26; this.x += (this.tx - this.w / 2 - this.x) * 0.05; this.y += (this.ty - this.h / 2 - this.y) * 0.05; this.face = P.cx < this.cx ? -1 : 1; };
     if (this.t % 4 === 0) G.parts.push({ x: this.cx - this.face * 14, y: this.cy + 6, vx: 0, vy: 0.3, life: 26, max: 26, c: ['#ffd23f', '#ff7ad9', '#7ad7ff'][this.t % 3], s: 2, g: 0 });
     switch (this.state) {
-      case 'enter': case 'idle': fly(this.phase2 ? 50 : 70); if (this.st > (this.phase2 ? 50 : 80)) this.next(['stars', 'papers', 'dive', this.phase2 ? 'starfall' : 'stars', this.phase2 ? 'meteor' : 'dive'][Math.floor(rnd(0, 5))]); break;
+      case 'enter': case 'idle': fly(this.phase2 ? 50 : 70); if (this.st > (this.phase2 ? 50 : 80)) this.next(['stars', 'papers', 'dive', 'meteor', this.phase2 ? 'starfall' : 'stars', this.phase2 ? 'meteor' : 'dive'][Math.floor(rnd(0, 6))]); break; // 流星一開始就會出現，後半更常用
       case 'stars': {
         fly(90); this.cast = 10;
         if (this.st === 1) Audio8.sfx('magic');

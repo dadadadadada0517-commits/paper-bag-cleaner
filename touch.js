@@ -36,7 +36,37 @@
     const up = () => { held[k] = false; b.classList.remove('down'); };
     b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
   });
-  addEventListener('resize', () => { if (jid === null) reset(); });
+  // 按鍵只放在遊戲畫面兩側的黑邊裡，依空間大小自動縮放
+  const pad = T.querySelector('.pad');
+  pad.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';
+  const B = k => T.querySelector('.b[data-k="' + k + '"]');
+  function put(k, x, y, d, small) {
+    const b = B(k); if (!b) return;
+    b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.width = b.style.height = d + 'px'; b.style.margin = (-d / 2) + 'px 0 0 ' + (-d / 2) + 'px';
+    b.style.borderWidth = Math.max(3, Math.round(d * 0.07)) + 'px';
+    b.querySelector('b').style.fontSize = Math.round(d * (small ? 0.4 : 0.42)) + 'px'; b.querySelector('small').style.fontSize = Math.max(8, Math.round(d * 0.14)) + 'px';
+  }
+  function layout() {
+    const r = screen.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    const rc = Math.max(0, W - r.right), lc = Math.max(0, r.left);
+    if (rc >= 200) { // 寬：SFC 菱形（射左、跳下、衝右三顆靠近；絕、換在上方較遠）
+      const u = Math.min(1.25, rc / 250, H / 300), cx = W - rc / 2, cy = H - 14 - 37 * u - 54 * u;
+      put('shoot', cx - 70 * u, cy, 74 * u); put('dash', cx + 70 * u, cy, 74 * u); put('jump', cx, cy + 54 * u, 74 * u);
+      put('ult', cx - 48 * u, cy - 108 * u, 58 * u, true); put('swap', cx + 52 * u, cy - 108 * u, 58 * u, true);
+    } else { // 窄：兩欄交錯，全部在黑邊裡
+      let d = Math.max(40, Math.min(74, rc * 0.46)); d = Math.max(36, Math.min(d, (H - 60) * 0.27));
+      const xa = W - rc * 0.70, xb = W - rc * 0.30, top = Math.max(60 + d * 0.4, H * 0.3);
+      put('ult', xb, top, d * 0.8, true); put('swap', xa, top, d * 0.8, true);
+      put('dash', xb, top + (H - top) * 0.3, d); put('shoot', xa, top + (H - top) * 0.55, d); put('jump', xb, top + (H - top) * 0.8, d);
+    }
+    const js = Math.max(0.6, Math.min(1.25, (lc - 12) / 124));
+    joy.style.setProperty('--js', js); joy.style.transform = `scale(${js})`;
+    joy.style.left = joy.style.left || ''; jz.style.width = Math.max(lc, W * 0.3) + 'px';
+    T.style.setProperty('--lc', lc + 'px');
+  }
+  addEventListener('resize', () => { if (jid === null) reset(); setTimeout(layout, 50); });
+  setTimeout(layout, 100); setTimeout(layout, 800);
+  let lastWH = ''; setInterval(() => { const k = innerWidth + 'x' + innerHeight; if (k !== lastWH) { lastWH = k; resize(); layout(); } }, 500); // 轉向、網址列收合時重新排
   // iPhone：連點不會放大畫面（Safari 會忽略 user-scalable=no，要自己擋）
   const stop = e => { if (e.cancelable) e.preventDefault(); };
   T.addEventListener('touchstart', stop, { passive: false }); T.addEventListener('touchend', stop, { passive: false });
