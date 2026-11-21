@@ -167,7 +167,7 @@ class Boss {
     }
     if (this.roar) this.roar--;
   }
-  // 最終關：小魔女（一直在天上飛）
+  // 最終關：豪鬼主任（一直在天上飛）
   witch() {
     const P = G.player, A = G.arena, midX = (this.ax0 + this.ax1) / 2;
     this.noContact = false;
