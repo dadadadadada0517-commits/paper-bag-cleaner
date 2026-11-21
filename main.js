@@ -38,7 +38,7 @@ addEventListener('resize', resize); resize();
 
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg?v=11211443'; });
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg?v=11211500'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
 // 去紫邊：只處理貼著透明區、而且「非常接近洋紅」的邊緣像素（不會吃掉粉紅、紫色的衣服頭髮）
@@ -73,7 +73,7 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.webp?v=11211443'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.webp?v=11211500'; });
 // 宣導標語：解決狀況時在畫面上方滑入（每關每種只出現一次）
 const TIPS = {
   poop: '遛狗不撿狗便便，依《廢棄物清理法》\n可罰新台幣 1,200～6,000 元！',
@@ -105,10 +105,10 @@ const MIDIMG = {}, PITIMG = {}, SELHEAD = [];
   let segs = [], s = -1; col.forEach((v, i) => { if (v && s < 0) s = i; if (!v && s >= 0) { segs.push([s, i]); s = -1; } }); if (s >= 0) segs.push([s, c.width]);
   segs = segs.filter(g => g[1] - g[0] > c.width / 40).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 5).sort((a, b) => a[0] - b[0]);
   for (const [a, b] of segs) { let top = c.height, bot = 0; for (let j = 0; j < c.height; j++) for (let i = a; i < b; i += 2) if (d[(j * c.width + i) * 4 + 3] > 0) { if (j < top) top = j; bot = j; break; } const o = document.createElement('canvas'); o.width = b - a; o.height = bot - top + 1; o.getContext('2d').drawImage(c, a, top, b - a, bot - top + 1, 0, 0, b - a, bot - top + 1); SELHEAD.push(o); }
-} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11211443'; }
+} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11211500'; }
 [1, 2, 3, 4].forEach(n => {
-  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11211443';
-  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11211443';
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11211500';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11211500';
 });
 
 // ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
@@ -268,18 +268,23 @@ function* talk(lines) {
 }
 function* playVideo(src, maxSec = 12) {
   const v = document.createElement('video');
-  v.src = src; v.playsInline = true; v.muted = Audio8.isMuted(); v.preload = 'auto';
+  v.src = src; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.muted = Audio8.isMuted(); v.preload = 'auto';
   // 影片疊在遊戲畫面上方，用淡入淡出銜接（不再硬切）
-  Object.assign(v.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', objectFit: 'contain', background: 'rgba(0,0,0,0.85)', zIndex: 5, opacity: '0', transition: 'opacity .45s ease' });
+  Object.assign(v.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', objectFit: 'contain', background: 'rgba(0,0,0,0.85)', zIndex: 5, opacity: '0', transition: 'opacity .45s ease', pointerEvents: 'none' });
+  // iPhone 不會預先載入影片：直接放進畫面並播放；有聲音被擋就改成靜音再播
   let state = 'load';
-  v.addEventListener('loadeddata', () => { if (state === 'load') { state = 'play'; document.body.appendChild(v); v.play().catch(() => { state = 'done'; }); requestAnimationFrame(() => requestAnimationFrame(() => { v.style.opacity = '1'; })); } });
+  document.body.appendChild(v);
+  const show = () => { if (state === 'load') { state = 'play'; requestAnimationFrame(() => requestAnimationFrame(() => { v.style.opacity = '1'; })); } };
+  v.addEventListener('playing', show);
   v.addEventListener('error', () => { state = 'fail'; });
   v.addEventListener('ended', () => { state = 'done'; });
-  setTimeout(() => { if (state === 'load') state = 'fail'; }, 4000);
+  const p = v.play(); if (p && p.catch) p.catch(() => { v.muted = true; v.play().catch(() => { state = 'fail'; }); });
+  setTimeout(() => { if (state === 'load') state = 'fail'; }, 8000);
   const t0 = performance.now();
   yield () => state === 'fail' || state === 'done' || (state === 'play' && (G.input.pressed.start || performance.now() - t0 > maxSec * 1000) || state === 'play' && v.duration && v.currentTime > v.duration - 0.45);
   if (state !== 'fail') { v.style.opacity = '0'; G.flash = 8; yield 26; }
   v.pause(); if (v.parentNode) v.remove();
+  Audio8.init(); // iPhone 播完影片後會暫停遊戲音效，這裡叫醒
   return state !== 'fail';
 }
 
@@ -393,7 +398,7 @@ function* bossSequence() {
 }
 G.onBossDefeated = (b) => {
   run((function* () {
-    G.mode = 'bossDown'; G.player.frozen = true; G.eshots = []; Audio8.stopMusic(); Audio8.sfx('bossdie'); G.flash = 12; G.shake = 16;
+    G.mode = 'bossDown'; G.player.frozen = true; G.eshots = []; Audio8.stopMusic(); Audio8.sfx('bossdie'); Audio8.sfx('bossboom'); // 魔王被打倒：連環大爆炸 G.flash = 12; G.shake = 16;
     for (const e of G.enemies) if (e.code === 's') e.dead = true;
     FX(b.kind === 'dogking' ? 'star' : 'converge', b.cx, b.cy, { opts: { size: b.kind === 'dogking' ? 0.9 : 0.7 } });
     yield 130;
@@ -416,7 +421,7 @@ G.onBossDefeated = (b) => {
       FX('converge', b.cx, b.cy, { opts: { size: 0.5, color: ab.color } }); Audio8.sfx('magic'); yield 40;
       G.absorb = { t: 0, from: { x: b.cx, y: b.cy }, color: ab.color };
       for (let i = 0; i < 26; i++) { const a = rnd(0, 6.28); G.parts.push({ x: b.cx + Math.cos(a) * 20, y: b.cy + Math.sin(a) * 20, vx: Math.cos(a) * 2, vy: Math.sin(a) * 2, life: 140, max: 140, c: i % 2 ? ab.color : '#ffffff', s: 3, g: 0, home: true, delay: i * 3 }); }
-      Audio8.sfx('warp'); yield 90;
+      Audio8.sfx(Audio8.hasExt('absorb') ? 'absorb' : 'warp'); yield 90;
       FX('relic', P.cx, P.y + P.h, { life: 1.4, opts: { size: 0.6, color: ab.color } }); FX('heal', P.cx, P.y + P.h, { opts: { color: ab.color } });
       G.heroGlow = 90; Audio8.sfx('bigshot'); G.flash = 10; floatText(P.cx, P.y - 14, '吸收能力：' + ab.name + '！', ab.color, true);
       yield 100; G.absorb = null;
@@ -525,7 +530,7 @@ function openCert() {
   ['touchstart', 'touchend', 'pointerdown'].forEach(n => d.addEventListener(n, e => e.stopPropagation(), { passive: true }));
   inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') d.querySelector('#cMake').click(); });
   d.querySelector('#cMake').onclick = () => { certName = inp.value.trim(); try { localStorage.setItem('pbh_name', certName); } catch (e) {} certCv = makeCert(certName); Audio8.sfx('select'); inp.blur(); };
-  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11211443'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
+  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11211500'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
   d.querySelector('#cBack').onclick = () => { d.remove(); certUI = null; goTitle(); };
 }
 function drawCertScreen() {

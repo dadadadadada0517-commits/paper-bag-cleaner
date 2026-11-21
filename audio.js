@@ -201,7 +201,12 @@ const Audio8 = (() => {
     if (bgm) return bgm;
     bgm = new Audio(); bgm.loop = true; bgm.preload = 'auto'; bgm.setAttribute('playsinline', '');
     bgm.addEventListener('error', () => { if (curName && curName === bgmName && !cur) { ext.el = null; startChip(curName); } });
+    bgm.addEventListener('playing', prefetchSongs, { once: true });
     return bgm;
+  }
+  // 第一首開始播之後，背景依序把其他配樂抓進快取 → 之後換關、魔王戰音樂馬上就有
+  function prefetchSongs() {
+    (async () => { for (const n of ['stage1', 'boss', 'stage2', 'stage3', 'stage4', 'witch', 'ending', 'title']) { try { await fetch('music-' + n + '.mp3'); } catch (e) {} } })();
   }
   function unlockBgm() {
     const el = bgmEl(); if (el._unlocked) return; el._unlocked = true;
@@ -308,6 +313,7 @@ const Audio8 = (() => {
   }
   function sfx(name, minGap = 0.03) {
     if (!ac || (!SFX[name] && !ext.sfx[name])) return;
+    if (ac.state !== 'running') { try { ac.resume(); } catch (e) {} } // iPhone 影片／來電後音效會被暫停（suspended / interrupted）
     const now = ac.currentTime;
     if (last[name] && now - last[name] < minGap) return;
     last[name] = now;
