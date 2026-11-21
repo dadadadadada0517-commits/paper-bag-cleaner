@@ -61,6 +61,7 @@ const SPR = (() => {
       const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2];
       if (magenta && r > 150 && b > 150 && g < 140 && Math.abs(r - b) < 90) { fg[i] = 0; d[i * 4 + 3] = 0; }
     }
+    if (magenta && typeof despill === 'function') { despill(d, W, H); for (let i = 0; i < W * H; i++) if (!d[i * 4 + 3]) fg[i] = 0; }
     x.putImageData(im, 0, 0);
     const split = (proj, len, gapMin, minSize) => { const out = []; let s = -1, gap = 0; for (let i = 0; i <= len; i++) { const on = i < len && proj[i] > 0; if (on) { if (s < 0) s = i; gap = 0; } else if (s >= 0) { gap++; if (gap > gapMin || i === len) { out.push([s, i - gap]); s = -1; gap = 0; } } } return out.filter(r => r[1] - r[0] >= minSize); };
     const rp = new Int32Array(H); for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) if (fg[Y * W + X]) rp[Y]++;

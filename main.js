@@ -39,14 +39,29 @@ const IMG = {};
 ['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
+// 去紫邊：貼著透明區的邊緣像素若帶洋紅色調（壓縮造成），把紅、藍壓回接近綠色，邊緣兩圈都處理
+function despill(p, W, H) {
+  for (let pass = 0; pass < 2; pass++) {
+    const edge = new Uint8Array(W * H);
+    for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) {
+      const i = Y * W + X; if (!p[i * 4 + 3]) continue;
+      if ((X > 0 && !p[(i - 1) * 4 + 3]) || (X < W - 1 && !p[(i + 1) * 4 + 3]) || (Y > 0 && !p[(i - W) * 4 + 3]) || (Y < H - 1 && !p[(i + W) * 4 + 3])) edge[i] = 1;
+    }
+    for (let i = 0; i < W * H; i++) {
+      if (!edge[i]) continue; const o = i * 4, r = p[o], g = p[o + 1], b = p[o + 2], sp = Math.min(r, b) - g;
+      if (sp > 30) { if (sp > 90 && r > 140 && b > 140) { p[o + 3] = 0; continue; } const m = g + sp * 0.25; p[o] = Math.min(r, m + (r - b > 0 ? r - b : 0)); p[o + 2] = Math.min(b, m + (b - r > 0 ? b - r : 0)); }
+    }
+  }
+}
 function keyMagenta(img) {
   const c = PX.canvas(img.width, img.height), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0);
   const im = x.getImageData(0, 0, c.width, c.height), p = im.data; let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
   for (let i = 0; i < p.length; i += 4) {
     const r = p[i], g = p[i + 1], b = p[i + 2];
-    if (g < 110 && r > 150 && b > 150 && Math.abs(r - b) < 90) p[i + 3] = 0;
+    if (p[i + 3] < 128 || (g < 110 && r > 150 && b > 150 && Math.abs(r - b) < 90)) p[i + 3] = 0;
     else { const k = i / 4, X = k % c.width, Y = (k / c.width) | 0; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; }
   }
+  despill(p, c.width, c.height);
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
