@@ -174,6 +174,7 @@ const Audio8 = (() => {
   function stopMusic() {
     if (timer) clearInterval(timer); timer = null; cur = null; curName = null;
     if (ext.el) { ext.el.pause(); ext.el = null; }
+    for (const k in els) if (!els[k].el.paused) els[k].el.pause();
   }
   function startChip(name, cb) {
     const s = getSong(name); if (!s) return;
@@ -181,18 +182,36 @@ const Audio8 = (() => {
     cur = s; step = 0; nextStepTime = ac.currentTime + 0.05; onEnd = cb || null;
     timer = setInterval(tick, 25); tick();
   }
+  // Suno 配樂：開遊戲就全部預先載入；載入中先保持安靜（不再用合成音頂替），載好立刻播放
+  const LOOP_SONGS = ['title', 'stage1', 'stage2', 'stage3', 'stage4', 'boss', 'witch', 'ending'];
+  const els = {};
+  function preload(name) {
+    if (els[name]) return els[name];
+    const el = new Audio(); el.preload = 'auto'; el.loop = true; el.volume = 0.6; el.muted = muted;
+    const rec = els[name] = { el, state: 'loading' };
+    el.addEventListener('canplaythrough', () => { if (rec.state !== 'ok') { rec.state = 'ok'; if (curName === name && !ext.el) playEl(name); } });
+    el.addEventListener('error', () => { rec.state = 'fail'; if (curName === name && !ext.el && !cur) startChip(name); });
+    el.src = 'music-' + name + '.mp3'; el.load();
+    return rec;
+  }
+  function playEl(name) {
+    const rec = els[name]; if (!rec) return;
+    if (cur) { if (timer) clearInterval(timer); timer = null; cur = null; } // 如果合成音在播，切換成 Suno
+    ext.el = rec.el; rec.el.muted = muted; rec.el.currentTime = 0;
+    rec.el.volume = 0; rec.el.play().catch(() => {});
+    let v = 0; const fade = setInterval(() => { v = Math.min(0.6, v + 0.06); rec.el.volume = v; if (v >= 0.6 || ext.el !== rec.el) clearInterval(fade); }, 40);
+  }
   function music(name, cb) {
     if (!ac) init();
     if (curName === name) return;
     stopMusic(); curName = name;
-    if (ext.ok[name] === false || !SONGS[name] || !SONGS[name].loop) { startChip(name, cb); curName = name; return; }
-    const el = new Audio(); el.src = 'music-' + name + '.mp3'; el.loop = true; el.volume = 0.55; el.muted = muted;
-    let settled = false;
-    const fail = () => { if (settled) return; settled = true; ext.ok[name] = false; if (curName === name && ext.el === el) { ext.el = null; startChip(name, cb); curName = name; } };
-    el.addEventListener('error', fail);
-    setTimeout(() => { if (!settled && el.readyState < 2) fail(); }, 1500);
-    el.addEventListener('canplay', () => { if (settled) return; settled = true; ext.ok[name] = true; if (curName === name) el.play().catch(() => {}); });
-    ext.el = el; el.load();
+    if (!SONGS[name] || !SONGS[name].loop) { startChip(name, cb); curName = name; return; }
+    LOOP_SONGS.forEach(preload);
+    const rec = preload(name);
+    if (rec.state === 'ok') playEl(name);
+    else if (rec.state === 'fail') { startChip(name, cb); curName = name; }
+    // 'loading'：等 canplaythrough 自動播放；10 秒還沒好才用合成音
+    else setTimeout(() => { if (curName === name && !ext.el && !cur && rec.state === 'loading') { startChip(name, cb); curName = name; } }, 10000);
   }
 
   // --- 音效 ---

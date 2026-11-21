@@ -1,7 +1,7 @@
 // ===== 魔王 =====
 class Boss {
   constructor(kind, x, floorY) {
-    this.kind = kind; this.t = 0; this.st = 0; this.state = 'enter'; this.hp = 28; this.maxHp = 28; this.inv = 0; this.flash = 0;
+    this.kind = kind; this.t = 0; this.st = 0; this.state = 'enter'; this.hp = 20; this.maxHp = 20; this.inv = 0; this.flash = 0;
     this.face = -1; this.vx = 0; this.vy = 0; this.floorY = floorY; this.dead = false; this.defeated = false; this.phase2 = false; this.queue = [];
     const A = G.arena;
     this.ax0 = A.x0 + 16; this.ax1 = A.x1 - 16;
@@ -11,7 +11,7 @@ class Boss {
     if (kind === 'abo') { this.dog = { x: this.ax1 - 44, y: floorY - 24, w: 34, h: 24, vx: 0, vy: 0, face: -1, state: 'sit', st: 0, t: 0, flash: 0 }; }
     if (kind === 'lady') { this.y = -60; }
     if (kind === 'dogking') { this.y = floorY - this.h; this.rise = 0; }
-    if (kind === 'witch') { this.x = A.x1 + 30; this.y = 60; this.hp = 32; this.maxHp = 32; }
+    if (kind === 'witch') { this.x = A.x1 + 30; this.y = 60; this.hp = 24; this.maxHp = 24; }
     this.hpShown = 0;
   }
   get cx() { return this.x + this.w / 2; }
@@ -65,7 +65,7 @@ class Boss {
     if (this.stagger > 0) { this.stagger--; this.vx = 0; if (this.kind !== 'witch') this.physics(); if (this.t % 6 === 0) sparks(this.cx + rnd(-8, 8), this.y + 4, '#ffd23f', 2, 1, 0); return; }
     this[this.kind]();
     const P = G.player;
-    if (!this.noContact && overlap(this.hitbox(), P)) P.hurt(4, this.cx);
+    if (!this.noContact && overlap(this.hitbox(), P)) P.hurt(3, this.cx);
   }
   hitbox() { return this.kind === 'dogking' ? { x: this.x + 4, y: this.y + 6, w: this.w - 8, h: this.h - 6 } : this; }
   onPhase2() {
@@ -109,7 +109,7 @@ class Boss {
       if (d.x < this.ax0 || d.x + d.w > this.ax1) { d.x = clamp(d.x, this.ax0, this.ax1 - d.w); d.state = 'sit'; d.st = 0; G.shake = 3; Audio8.sfx('hit'); }
     } else if (d.state === 'stun') { if (d.st > 50) { d.state = 'sit'; d.st = 0; } }
     else { d.vx = 0; d.face = P.cx < d.x + 15 ? -1 : 1; if (d.st > (this.phase2 ? 80 : 140) && this.state === 'idle') { d.state = 'bark'; d.st = 0; Audio8.sfx('bark'); } }
-    if (d.state !== 'stun' && overlap(d, P)) P.hurt(4, d.x + 15, '被小黑撞到！');
+    if (d.state !== 'stun' && overlap(d, P)) P.hurt(3, d.x + 15, '被小黑撞到！');
   }
   // 第二關：名牌貴婦
   lady() {
@@ -206,7 +206,7 @@ class Boss {
         fly(120); this.cast = 10;
         if (this.st === 1) { this.mx = clamp(P.cx, this.ax0 + 30, this.ax1 - 30); FX('warn', this.mx, this.floorY, { opts: { size: 2.2, warningDuration: 1 } }); floatText(this.cx, this.y - 10, '流星魔法！', '#ff8a8a', true); Audio8.sfx('siren'); }
         if (this.st === 60) { FX('meteor', this.mx, this.floorY, { opts: { size: 0.6 } }); }
-        if (this.st === 78) { G.shake = 14; Audio8.sfx('explode'); G.flash = 4; if (Math.abs(P.cx - this.mx) < 40 && P.y + P.h > this.floorY - 30) P.hurt(6, this.mx, '流星直擊！'); }
+        if (this.st === 78) { G.shake = 14; Audio8.sfx('explode'); G.flash = 4; if (Math.abs(P.cx - this.mx) < 40 && P.y + P.h > this.floorY - 30) P.hurt(4, this.mx, '流星直擊！'); }
         if (this.st > 110) this.next('idle'); break;
     }
     if (this.cast) this.cast--;
@@ -221,7 +221,7 @@ class Boss {
       const cry = { abo: '哇啊！我的袋子被吸走了！', lady: '不要！塑膠袋配不上我的名牌！', dogking: '嗚汪！香香的…好難受！' }[this.kind];
       if (cry && (!this.cryT || G.t - this.cryT > 200)) { this.cryT = G.t; floatText(this.cx, this.y - 30, cry, '#fff'); }
     }
-    this.hp -= dmg; this.inv = weak ? 30 : 18; this.flash = 18; Audio8.sfx('hit');
+    this.hp -= dmg; this.inv = weak ? 20 : 10; this.flash = 18; Audio8.sfx('hit');
     if (b) { FX(dmg >= 4 ? 'ink' : 'burst', b.cx, b.y + b.h / 2, dmg >= 4 ? {} : { opts: { size: 0.3 } }); if (dmg >= 4) floatText(this.cx, this.y - 4, 'BIG HIT!', '#ffd23f'); }
     if (this.hp <= 0) { this.hp = 0; this.defeated = true; this.st = 0; G.onBossDefeated(this); }
     return true;
