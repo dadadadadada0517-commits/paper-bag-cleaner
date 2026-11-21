@@ -6,8 +6,42 @@ const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h 
 
 // ---------- 特效門面：優先用 00GameDevs 特效庫，沒有 WebGL / 用 file:// 開啟時改用像素粒子 ----------
 const FB = { burst: '#7fe6ff', zap: '#ffe36a', explode: '#ff8a2a', wave: '#5fd8ff', puff: '#d6d3e6', shock: '#e8c999', heal: '#ff9fc8', healfield: '#86e9b2', venom: '#a6c24a', steam: '#b8d27a', air: '#ff9a40', dust: '#dcbb87', thunder: '#c98aff', star: '#fff2a8', gold: '#ffd166', converge: '#c1b8ff', relic: '#f5cc75', fireball: '#ff7a24', meteor: '#ff7a24', ink: '#222', gate: '#c1b8ff', arrows: '#9fd0ff', hole: '#ffab42', warn: '#ff303e' };
+// 自製像素特效（特效庫在 2D 畫面上位置對不準，改用自己畫的）
+function cloud(x, y, vx, vy, r0, r1, life, c, g = 0) { G.parts.push({ x, y, vx, vy, life, max: life, c, s: 1, g, cloud: true, r0, r1 }); }
+function ring(x, y, r0, r1, life, c, flat = 0.4) { G.parts.push({ x, y, vx: 0, vy: 0, life, max: life, c, s: 1, g: 0, ring: true, r0, r1, flat }); }
 function FX(name, x, y, o = {}) {
-  if (window.VFX && window.VFX.ready && !G.lowFx) return window.VFX.spawn(name, x, y, o);
+  const sz = (o.opts && o.opts.size) || 0.4, col = (o.opts && o.opts.color) || FB[name] || '#fff', k = sz / 0.4;
+  switch (name) {
+    case 'puff': case 'air':
+      for (let i = 0; i < 7; i++) { const a = i / 7 * 6.28; cloud(x, y, Math.cos(a) * 0.9 * k, Math.sin(a) * 0.6 * k - 0.2, 2, 6 * k, 22, i % 2 ? col : '#ffffff'); }
+      return null;
+    case 'explode':
+      cloud(x, y, 0, 0, 4 * k, 14 * k, 8, '#fffbe0');
+      for (let i = 0; i < 8; i++) { const a = rnd(0, 6.28), s = rnd(0.6, 1.6) * k; cloud(x, y, Math.cos(a) * s, Math.sin(a) * s - 0.3, 3 * k, 8 * k, rnd(18, 28), i % 3 ? '#ff9a3a' : '#8a8494'); }
+      sparks(x, y, '#ffe36a', 10, 2.5 * k, 0.1); return null;
+    case 'venom': case 'steam': case 'ink':
+      for (let i = 0; i < 8; i++) { const a = rnd(Math.PI, Math.PI * 2); G.parts.push({ x, y: y - 2, vx: Math.cos(a) * rnd(0.5, 1.8) * k, vy: Math.sin(a) * rnd(1, 2.6) * k, life: 26, max: 26, c: i % 2 ? col : '#d9e88a', s: 2.5, g: 0.15 }); }
+      for (let i = 0; i < 3; i++) cloud(x + rnd(-6, 6) * k, y - 3, rnd(-0.3, 0.3), -0.4, 2, 6 * k, 30, name === 'ink' ? '#333' : col);
+      return null;
+    case 'wave':
+      ring(x, y, 2, 16 * k, 16, '#bff4ff');
+      for (let i = 0; i < 12; i++) G.parts.push({ x: x + rnd(-4, 4), y: y - 2, vx: rnd(-1.6, 1.6) * k, vy: rnd(-3.2, -1.4) * k, life: 30, max: 30, c: i % 3 ? '#5fd8ff' : '#ffffff', s: 2.5, g: 0.18 });
+      return null;
+    case 'heal': case 'healfield': case 'star': case 'converge': case 'relic': case 'gold':
+      for (let i = 0; i < 12; i++) G.parts.push({ x: x + rnd(-10, 10) * k, y: y - rnd(0, 20) * k, vx: 0, vy: -rnd(0.4, 1.2), life: rnd(24, 40), max: 40, c: i % 3 ? col : '#ffffff', s: 2, g: 0, dot: true });
+      if (name !== 'heal') ring(x, y, 2, 20 * k, 20, col);
+      return null;
+    case 'dust': case 'shock':
+      for (let i = 0; i < 8; i++) { const d = i % 2 ? 1 : -1; cloud(x + d * rnd(0, 6), y - 2, d * rnd(0.8, 2.2) * k, -rnd(0, 0.4), 2, 6 * k, 24, i % 3 ? '#dcbb87' : '#f4e6c8'); }
+      if (name === 'shock') ring(x, y, 4, 30 * k, 18, '#f4e6c8', 0.25);
+      return null;
+    case 'warn':
+      G.parts.push({ x, y, vx: 0, vy: 0, life: 70, max: 70, c: '#ff303e', s: 1, g: 0, warn: true, r0: 22 * k }); return null;
+    case 'thunder': case 'zap':
+      cloud(x, y, 0, 0, 3, 12 * k, 8, '#fff6c0'); sparks(x, y, col, 12, 3, 0); return null;
+    case 'hole': case 'gate':
+      ring(x, y, 4, 30 * k, 40, col, 1); ring(x, y, 2, 20 * k, 50, '#ffffff', 1); sparks(x, y, col, 14, 2, 0); return null;
+  }
   const c = FB[name] || '#fff', n = { burst: 12, zap: 8, explode: 24, wave: 18, puff: 10, shock: 20, gold: 30, converge: 40, star: 40, fireball: 30, meteor: 24 }[name] || 14;
   const big = ['converge', 'star', 'gold', 'fireball', 'relic', 'hole'].includes(name);
   for (let i = 0; i < n; i++) {
@@ -19,7 +53,9 @@ function FX(name, x, y, o = {}) {
 function fxStop(h) { if (h && window.VFX) window.VFX.stop(h); }
 function fxHit(h) { if (h && window.VFX) window.VFX.hit(h); }
 function sparks(x, y, c, n = 8, sp = 2, g = 0.1) { for (let i = 0; i < n; i++) { const a = rnd(0, Math.PI * 2), s = rnd(0.4, sp); G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 0.6, life: rnd(14, 28), max: 28, c, s: rnd(1, 2.5), g }); } }
-function floatText(x, y, text, color = '#fff', big = false) { G.texts.push({ x, y, text, color, life: 60, big }); }
+function floatText(x, y, text, color = '#fff', big = false) {
+  if (G.texts.some(t => t.text === text && Math.abs(t.x - x) < 70 && t.life > 30)) return; // 同樣的字不要疊在一起
+  G.texts.push({ x, y, text, color, life: 60, big }); }
 
 // ---------- 地圖碰撞 ----------
 function tileAt(tx, ty) { const L = G.level; if (ty < 0) return '.'; if (tx < 0 || tx >= L.w || ty >= L.h) return ty >= L.h ? '.' : '#'; return L.t[ty][tx]; }
@@ -376,7 +412,7 @@ class Item {
   constructor(type, x, y, dyn) {
     this.type = type; this.dyn = !!dyn; this.t = Math.floor(rnd(0, 60));
     const sz = { poop: [12, 9], big: [20, 15], trash: [9, 10], egg: [9, 10], boba: [12, 18], check: [12, 32], star: [10, 10] }[type];
-    this.w = sz[0]; this.h = sz[1]; this.x = x - this.w / 2; this.y = y - this.h; this.vy = 0;
+    this.sc = type === 'poop' || type === 'big' ? 2 : 1.5; this.w = Math.round(sz[0] * this.sc); this.h = Math.round(sz[1] * this.sc); this.x = x - this.w / 2; this.y = y - this.h; this.vy = 0; // 道具放大 50%
     this.hp = type === 'big' ? 1 : 1; this.kind = Math.floor(rnd(0, 3)); this.active = false;
   }
   get cx() { return this.x + this.w / 2; }
@@ -415,9 +451,9 @@ class Item {
     const gk = { poop: 'it_poop', big: 'it_big', trash: ['it_can', 'it_bottle', 'it_paper'][this.kind], egg: 'it_egg', boba: 'it_boba', star: 'it_star', check: this.active ? 'it_flagG' : 'it_flagR' }[this.type];
     if (SPR.has(gk)) {
       const bob = this.type === 'trash' || this.type === 'egg' || this.type === 'boba' || this.type === 'star' ? Math.round(Math.sin(this.t / 12)) : 0;
-      SPR.draw(ctx, gk, this.cx - cx, this.y + this.h + 1 + bob, this.type === 'check' ? 1 : (this.kind % 2 ? -1 : 1));
-      if (this.type === 'poop') this.stink(ctx, x + 6, y - 3);
-      if (this.type === 'big') this.stink(ctx, x + 10, y - 5);
+      { const fx = this.cx - cx, fy = this.y + this.h + 1 + bob; ctx.save(); ctx.translate(fx, fy); ctx.scale(this.sc, this.sc); SPR.draw(ctx, gk, 0, 0, this.type === 'check' ? 1 : (this.kind % 2 ? -1 : 1)); ctx.restore(); }
+      if (this.type === 'poop') this.stink(ctx, x + 12, y - 3);
+      if (this.type === 'big') this.stink(ctx, x + 20, y - 5);
       return;
     }
     if (this.type === 'poop') { ctx.drawImage(S.poop, x, y - 1); this.stink(ctx, x + 6, y - 2); }
@@ -456,6 +492,7 @@ class Enemy {
     const d = ENEMY_DEF[code];
     Object.assign(this, { code, w: d.w, h: d.h, hp: d.hp, maxHp: d.hp, dmg: d.dmg, name: d.name, fly: d.fly, invuln: d.inv, x: x - d.w / 2, y: y - d.h, vx: 0, vy: 0, face: -1, t: Math.floor(rnd(0, 100)), state: 'idle', st: 0, flash: 0, onGround: false, ox: x, oy: y - d.h });
     this.variant = Math.floor(rnd(0, 3));
+    if (code !== 'o' && code !== 'v') { const W = Math.round(d.w * 1.5), H = Math.round(d.h * 1.5); this.x = x - W / 2; this.y = y - H; this.oy = this.y; this.w = W; this.h = H; }
     if (code === 'v') { this.t = Math.floor(rnd(0, 150)); }
   }
   get cx() { return this.x + this.w / 2; }
@@ -476,7 +513,6 @@ class Enemy {
       if (this.st === 1) this.face = (G.player.cx < this.cx ? 1 : -1);
       this.vx = this.face * (this.state === 'tamed' ? 2.6 : 1.6); this.x += this.vx;
       if (!this.onGround) { this.vy = Math.min(this.vy + 0.25, 6); this.y += this.vy; const ty = Math.floor((this.y + this.h) / TS), tx = Math.floor(this.cx / TS); if (isSolid(tx, ty) || isOneWay(tx, ty)) { this.y = ty * TS - this.h; this.vy = 0; this.onGround = true; } }
-      if (this.st % 20 === 0 && this.state === 'tamed') FX('heal', this.cx, this.y, { opts: { size: 0.25 } , life: 0.3 });
       if (Math.abs(this.x - G.camX - VW / 2) > VW) this.dead = true;
       return;
     }
@@ -570,7 +606,8 @@ class Enemy {
     if (isDog) { this.state = 'tamed'; this.st = 0; this.face = G.player.cx < this.cx ? 1 : -1; Audio8.sfx('tame'); floatText(this.cx, this.y - 8, '冷靜下來了～♥', '#ff9fc8'); G.tip('dog'); FX('heal', this.cx, this.y + this.h, { opts: { size: 0.4 } }); G.tamed++; return; }
     if (this.code === 'o') { this.state = 'sorry'; this.st = 0; this.face = G.player.cx < this.cx ? 1 : -1; Audio8.sfx('tame'); floatText(this.cx, this.y - 10, ['對不起！我會撿！', '下次會帶袋子…', '我錯了啦～'][this.variant], '#ffe18a'); FX('puff', this.cx, this.y + this.h / 2); G.tip('owner'); return; }
     this.dead = true;
-    if (this.code === 'R' || this.code === 'm') { FX('explode', this.cx, this.cy, { opts: { size: this.code === 'm' ? 0.5 : 0.4 } }); Audio8.sfx('pop'); Audio8.sfx('hit'); G.shake = 3; sparks(this.cx, this.cy, '#ffd23f', 12, 2.5, 0.12); }
+    if (this.code === 'R' || this.code === 'm') { FX('explode', this.cx, this.cy, { opts: { size: this.code === 'm' ? 0.5 : 0.4 } }); Audio8.sfx('pop'); Audio8.sfx('hit'); G.shake = 3; sparks(this.cx, this.cy, '#ffd23f', 12, 2.5, 0.12);
+      if (this.code === 'R') { for (const [k, dx] of [['star', -10], ['boba', 10]]) { const it = new Item(k, this.cx + dx, this.y + this.h, true); it.vy = -3; G.items.push(it); } floatText(this.cx, this.y - 12, '掃地機器人掉寶！絕招能量＋補血', '#ffe36a', true); Audio8.sfx('magic'); } }
     else if (this.code === 'u' || this.code === 's') { FX('venom', this.cx, this.y + this.h, { opts: { size: 0.4 }, life: 0.8 }); Audio8.sfx('squish'); const p = new Item('poop', this.cx, this.y + this.h, true); G.items.push(p); G.dynPoops++; floatText(this.cx, this.y - 6, '變回便便了！快沖掉！', '#ffd23f'); }
     else if (this.code === 'b') { FX('puff', this.cx, this.cy, { opts: { size: 0.45, color: '#555a68' } }); Audio8.sfx('pop'); for (let i = 0; i < 2; i++) { const t = new Item('trash', this.cx + (i ? 8 : -8), this.y + this.h, true); t.vy = -2; G.items.push(t); G.dynPoops++; } }
     else { FX('puff', this.cx, this.cy, { opts: { size: 0.35 } }); Audio8.sfx('pop'); }
@@ -610,6 +647,7 @@ class Enemy {
       ctx.save();
       if (this.code === 's') { const k = 1 + Math.sin(this.t / 6) * 0.12; ctx.translate(this.cx - cx, dy); ctx.scale(1 / k, k); ctx.translate(-(this.cx - cx), -dy); }
       if (this.code === 'o' && this.state === 'sorry') ctx.globalAlpha = 0.85;
+      if (this.code !== 'o' && this.code !== 'v') { ctx.translate(this.cx - cx, dy); ctx.scale(1.5, 1.5); ctx.translate(-(this.cx - cx), -dy); } // 小怪放大 50%
       SPR.draw(ctx, sk, this.cx - cx, dy, this.face > 0 ? 1 : -1, false);
       if (this.flash > 0) SPR.draw(ctx, sk, this.cx - cx, dy, this.face > 0 ? 1 : -1, true, 0.8);
       ctx.restore();

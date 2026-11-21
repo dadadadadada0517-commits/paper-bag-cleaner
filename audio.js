@@ -304,12 +304,12 @@ const Audio8 = (() => {
     g.gain.value = SFX_VOL[n] || 0.9; s.connect(g); g.connect(sfxGain); s.start();
   }
   function sfx(name, minGap = 0.03) {
-    if (!ac || !SFX[name]) return;
+    if (!ac || (!SFX[name] && !ext.sfx[name])) return;
     const now = ac.currentTime;
     if (last[name] && now - last[name] < minGap) return;
     last[name] = now;
     if (ext.sfx[name]) playExt(name); else SFX[name]();
   }
 
-  return { init, music, stopMusic, sfx, toggleMute, isMuted: () => muted, get current() { return curName; } };
+  return { init, music, stopMusic, sfx, hasExt: n => !!ext.sfx[n], toggleMute, isMuted: () => muted, get current() { return curName; } };
 })();

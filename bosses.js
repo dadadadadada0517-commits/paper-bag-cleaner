@@ -1,7 +1,7 @@
 // ===== 魔王 =====
 class Boss {
   constructor(kind, x, floorY) {
-    this.kind = kind; this.t = 0; this.st = 0; this.state = 'enter'; this.hp = 30; this.maxHp = 30; this.inv = 0; this.flash = 0;
+    this.kind = kind; this.t = 0; this.st = 0; this.state = 'enter'; this.hp = 45; this.maxHp = 45; this.inv = 0; this.flash = 0;
     this.face = -1; this.vx = 0; this.vy = 0; this.floorY = floorY; this.dead = false; this.defeated = false; this.phase2 = false; this.queue = [];
     const A = G.arena;
     this.ax0 = A.x0 + 16; this.ax1 = A.x1 - 16;
@@ -11,7 +11,7 @@ class Boss {
     if (kind === 'abo') { this.dog = { x: this.ax1 - 44, y: floorY - 24, w: 34, h: 24, vx: 0, vy: 0, face: -1, state: 'sit', st: 0, t: 0, flash: 0 }; }
     if (kind === 'lady') { this.y = -60; }
     if (kind === 'dogking') { this.y = floorY - this.h; this.rise = 0; }
-    if (kind === 'witch') { this.x = A.x1 + 30; this.y = 60; this.hp = 36; this.maxHp = 36; }
+    if (kind === 'witch') { this.x = A.x1 + 30; this.y = 60; this.hp = 54; this.maxHp = 54; }
     this.hpShown = 0;
   }
   get cx() { return this.x + this.w / 2; }
@@ -228,7 +228,7 @@ class Boss {
   }
   deathAnim() {
     // 交給 main 的流程；這裡只做持續小爆炸
-    if (this.st < 100 && this.st % 12 === 0) { FX('explode', this.cx + rnd(-16, 16), this.cy + rnd(-16, 16), { opts: { size: 0.4 } }); Audio8.sfx('explode'); G.shake = 6; }
+    if (this.st < 100 && this.st % 24 === 0) { FX('explode', this.cx + rnd(-16, 16), this.cy + rnd(-16, 16), { opts: { size: 0.4 } }); Audio8.sfx('explode'); G.shake = 6; }
     if (this.kind === 'witch') { if (this.y + this.h < this.floorY) { this.y += 1.2; } this.x += ((G.arena.x0 + G.arena.x1) / 2 - this.cx) * 0.02; }
     else this.physics();
     if (this.kind === 'abo') { const d = this.dog; d.vx = 0; d.state = 'happy'; }

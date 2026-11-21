@@ -147,6 +147,8 @@ const SPR = (() => {
       const img = new Image();
       img.onload = () => {
         try { cut(img, spec); } catch (e) { console.warn('sheet', file, e); }
+        // 丟東西的影格：以站姿的背部邊緣對齊，身體不會左右亂跳（只有手往前伸）
+        if (file === 'abo' || file === 'lady') { const p = file[0], st = f[p + '_stand']; if (st) for (const n of Object.keys(f)) if (n.startsWith(p + '_t')) f[n].ax = st.ax; }
         loaded++;
         if (file === 'dogs') Object.keys(f).filter(n => n.startsWith('d_')).forEach(n => recolor(n, 'W' + n, (r, g, b) => { const l = (r + g + b) / 3; return [Math.min(255, l * 0.5 + 125), Math.min(255, l * 0.5 + 123), Math.min(255, l * 0.5 + 130)]; }));
       };

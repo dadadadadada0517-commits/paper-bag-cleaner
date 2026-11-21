@@ -36,7 +36,7 @@ addEventListener('resize', resize); resize();
 
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg'; });
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.png'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
 function keyMagenta(img) {
@@ -95,18 +95,18 @@ function updateCameo() {
     if (--G.cameoTimer > 0) return;
     G.cameoTimer = 2400 + Math.floor(rnd(0, 1800));
     const id = Math.random() < 0.5 ? 'm' : 's', dir = Math.random() < 0.5 ? 1 : -1, gift = Math.random() < 0.55;
-    G.cameo = { id, gift, dir, t: 0, x: G.camX + (dir > 0 ? -60 : VW + 60), y: gift ? 40 : rnd(36, 70), say: '', sayT: 0, phase: 'in' };
+    G.cameo = { id, gift, dir, t: 0, x: G.camX + (dir > 0 ? -40 : VW + 40), y: gift ? 62 : rnd(78, 100), say: '', sayT: 0, phase: 'in' };
     Audio8.sfx('warp');
     return;
   }
   const c = G.cameo, C = CAMEOS[c.id]; c.t++;
   if (!c.gift) { // 遠方飛過
-    c.x += c.dir * 2.2; c.y += Math.sin(c.t / 12) * 0.4;
-    if (c.t === 30) { c.say = C.lines[Math.random() < 0.5 ? 0 : 2]; c.sayT = 150; }
+    c.x += c.dir * 1.5; c.y += Math.sin(c.t / 12) * 0.4;
+    if (c.t === 50) { c.say = C.lines[Math.random() < 0.5 ? 0 : 2]; c.sayT = 150; }
     if (Math.abs(c.x - G.camX - 200) > 300) G.cameo = null;
   } else {
-    if (c.phase === 'in') { const tx = P.cx - c.dir * 30; c.x += (tx - c.x) * 0.06; c.y += (34 - c.y) * 0.06; if (Math.abs(tx - c.x) < 4) { c.phase = 'hover'; c.t = 0; c.say = C.lines[1]; c.sayT = 110; Audio8.sfx('magic'); } }
-    else if (c.phase === 'hover') { c.y = 34 + Math.sin(c.t / 10) * 2; if (c.t === 60) { c.phase = 'throw'; c.t = 0; } }
+    if (c.phase === 'in') { const tx = P.cx - c.dir * 30; c.x += (tx - c.x) * 0.06; c.y += (62 - c.y) * 0.06; if (Math.abs(tx - c.x) < 4) { c.phase = 'hover'; c.t = 0; c.say = C.lines[1]; c.sayT = 110; Audio8.sfx('magic'); } }
+    else if (c.phase === 'hover') { c.y = 62 + Math.sin(c.t / 10) * 2; if (c.t === 60) { c.phase = 'throw'; c.t = 0; } }
     else if (c.phase === 'throw') {
       if (c.t === 6) { const r = Math.random(), type = r < 0.4 ? 'boba' : r < 0.7 ? 'star' : 'egg'; const it = new Item(type, c.x + c.dir * 10, c.y + 10, true); it.vy = -2; G.items.push(it); Audio8.sfx('throw'); FX('heal', c.x, c.y + 10, { opts: { size: 0.3 } }); }
       if (c.t > 24) { c.phase = 'out'; c.t = 0; }
@@ -115,14 +115,15 @@ function updateCameo() {
   if (c.sayT > 0) c.sayT--;
 }
 function drawCameo(cam, back) {
-  const c = G.cameo; if (!c || (back !== !c.gift)) return;
+  const c = G.cameo; if (!c) { G.cameoSay = null; return; } if (back !== !c.gift) return;
   const C = CAMEOS[c.id];
   const key = c.gift && c.phase === 'hover' ? C.idle : c.gift && c.phase === 'throw' ? C.throw : C.fly + (Math.floor(c.t / 6) % 2);
   const s = SPR.f[key]; if (!s) return;
   const k = back ? 0.7 : 1;
   ctx.save(); ctx.translate(Math.round(c.x - cam), Math.round(c.y)); ctx.scale(c.dir * k, k); if (back) ctx.globalAlpha = 0.92;
   ctx.drawImage(s.img, -s.ax, -s.h / 2, s.w, s.h); ctx.restore();
-  if (c.sayT > 0) G.cameoSay = { x: c.x, top: c.y - s.h * k / 2, bot: c.y + s.h * k / 2, text: C.name + '：' + c.say };
+  const onScr = c.x - cam > 10 && c.x - cam < VW - 10;
+  if (c.sayT > 0 && onScr) G.cameoSay = { x: c.x, top: c.y - s.h * k / 2, bot: c.y + s.h * k / 2, text: C.name + '：' + c.say };
   else G.cameoSay = null;
 }
 // 小編行進中自言自語（配合場景）
@@ -158,7 +159,7 @@ function drawBubble(imgKey, cx, topY, text, color, fallbackBorder) {
   return h;
 }
 function drawCameoSay() {
-  const b = G.cameoSay; if (!b || !G.zc) return;
+  const b = G.cameoSay; if (!b || !G.zc || !G.cameo || G.mode !== 'play') return;
   const [x, ty] = worldToScreen(b.x, b.top), [, by] = worldToScreen(b.x, b.bot);
   // 上方放得下就放上方，否則放到超人下方，避免擋住他
   const above = ty - 24 >= 44;
@@ -314,8 +315,8 @@ function* storyIntro() {
 function startStage(n) {
   G.mode = 'stageCard'; G.cardT = 0; G.cardStage = n; Audio8.stopMusic(); Audio8.sfx('select');
   run((function* () {
-    yield 6; Audio8.music('bossintro'); yield 214;
-    loadLevel(n); G.mode = 'ready'; G.readyT = 0; G.player.frozen = true; Audio8.music('ready');
+    yield 6; Audio8.music(LEVEL_DATA[n - 1].music); yield 214;
+    loadLevel(n); G.mode = 'ready'; G.readyT = 0; G.player.frozen = true;
     yield 150;
     G.mode = 'play'; G.player.frozen = false; Audio8.music(LEVEL_DATA[n - 1].music);
   })());
@@ -331,12 +332,13 @@ function* bossSequence() {
   for (let i = 0; i < 70; i++) { G.camX = startCam + (targetCam - startCam) * (i / 69); P.x += 1.1; P.face = 1; P.anim++; P.vx = 1; yield 1; }
   P.vx = 0; P.x = Math.max(P.x, L.arena.x0 + 8);
   L.gateOpen = false; Audio8.sfx('door');
+  G.enemies = G.enemies.filter(e => e.state !== 'sorry' && e.state !== 'tamed' && e.x < L.arena.x0 - 8);
   for (let i = 30; i >= 0; i--) { L.gateAnim = i / 30; yield 1; }
   G.mode = 'bossIntro';
   // 魔王出場動畫：先試 Grok 生成的影片，沒有就用遊戲內動畫
   // 魔王出場動畫（Grok 影片，淡入淡出）
   yield* playVideo('video-boss' + G.stage + '.mp4', 8);
-  Audio8.sfx('siren'); G.warnT = 120; yield 60;
+  Audio8.music(D.bossMusic || 'boss'); Audio8.sfx('siren'); G.warnT = 120; yield 60;
   G.boss = new Boss(D.boss, L.bossSpawn.x, L.arena && 11 * TS);
   yield () => G.boss.entrance();
   yield* talk(D.intro);
@@ -352,8 +354,8 @@ G.onBossDefeated = (b) => {
     G.mode = 'bossDown'; G.player.frozen = true; G.eshots = []; Audio8.stopMusic(); Audio8.sfx('bossdie'); G.flash = 12; G.shake = 16;
     for (const e of G.enemies) if (e.code === 's') e.dead = true;
     FX(b.kind === 'dogking' ? 'star' : 'converge', b.cx, b.cy, { opts: { size: b.kind === 'dogking' ? 0.9 : 0.7 } });
-    yield 110;
-    Audio8.music('victory'); G.winPose = true; yield 150; G.winPose = false;
+    yield 130;
+    if (Audio8.hasExt('victory')) Audio8.sfx('victory'); else Audio8.music('victory'); G.winPose = true; yield 170; G.winPose = false;
     yield* talk(G.level.def.outro);
     const before = { ...G.abilities }, lvBefore = G.gunLv;
     const firstClear = !save.cleared.includes(G.stage);
@@ -375,7 +377,7 @@ G.onBossDefeated = (b) => {
       FX('relic', P.cx, P.y + P.h, { life: 1.4, opts: { size: 0.6, color: ab.color } }); FX('heal', P.cx, P.y + P.h, { opts: { color: ab.color } });
       G.heroGlow = 90; Audio8.sfx('bigshot'); G.flash = 10; floatText(P.cx, P.y - 14, '吸收能力：' + ab.name + '！', ab.color, true);
       yield 100; G.absorb = null;
-      G.mode = 'getAbility'; G.getT = 0; G.getAb = reward; Audio8.music('getweapon', () => Audio8.music('title'));
+      G.mode = 'getAbility'; G.getT = 0; G.getAb = reward; if (Audio8.hasExt('getweapon')) Audio8.sfx('getweapon'); else Audio8.music('getweapon', () => Audio8.music('title'));
       yield () => G.getT > 90 && G.input.pressed.ok;
       goSelect();
     } else {
@@ -406,20 +408,19 @@ function camMax() { const L = G.level; return Math.min(L.w * TS - VW, L.gateX * 
 function ultimate() {
   run((function* () {
     const prev = G.mode, P = G.player;
-    G.mode = 'ultra'; G.ultraT = 0; P.frozen = true; G.ultra = 0; Audio8.sfx('siren');
+    G.mode = 'ultra'; G.ultraT = 0; P.frozen = true; G.ultra = 0;
     // ① 集氣：畫面變暗、小編微微浮起、背後 GPT 能量氣焰、光點往身上聚
     G.ultraAura = 1; Audio8.sfx('ultcharge');
     for (let i = 0; i < 60; i++) {
       G.dark = Math.min(0.85, i / 30); G.ultraLift = Math.min(6, i / 6);
-      if (i % 10 === 0) Audio8.sfx('charge2');
       if (i % 2 === 0) { const a = rnd(0, 6.28), r = 56; G.parts.push({ x: P.cx + Math.cos(a) * r, y: P.cy + Math.sin(a) * r, vx: -Math.cos(a) * 2.4, vy: -Math.sin(a) * 2.4, life: 22, max: 22, c: i % 4 ? '#bff4ff' : '#ffe36a', s: 2.5, g: 0 }); }
       G.shake = i / 30; yield 1;
     }
     // ② 特寫切入（有 Grok 影片就播影片，否則用 GPT 特寫圖）
-    G.cutin = { t: 0, who: 'hero', name: '全城大掃除！！', sub: '小編 ─ 清潔奧義', dur: 80, color: '#7fe6ff', y: 96 }; Audio8.sfx('charge2');
+    G.cutin = { t: 0, who: 'hero', name: '全城大掃除！！', sub: '小編 ─ 清潔奧義', dur: 80, color: '#7fe6ff', y: 96 }; Audio8.sfx('cutin');
     yield () => G.cutin.t > 80; G.cutin = null;
     // ③ GPT 巨大水砲：從槍口延伸到畫面邊緣，沿路依序沖掉便便、打倒敵人
-    G.mode = 'ultraFire'; G.flash = 12; G.shake = 14; Audio8.sfx('ultfire'); Audio8.sfx('bigshot');
+    G.mode = 'ultraFire'; G.flash = 12; G.shake = 14; Audio8.sfx('ultfire');
     const dir = P.face, gx = P.cx + dir * 18, gy = P.y + 10 - G.ultraLift;
     G.ultraBeam = { t: 0, x: gx, y: gy, dir };
     const onScreen = o => o.x > G.camX - 10 && o.x < G.camX + VW + 10;
@@ -753,18 +754,21 @@ function drawTiles() {
       else { ctx.strokeStyle = 'rgba(86,240,224,0.25)'; ctx.strokeRect(x + 0.5, y + 0.5, 15, 15); }
     }
     else if (c === 'G') {
-      const open = L.gateAnim, hgt = Math.round(TS * (1 - open));
-      const gi = SPR.f.it_gate;
-      if (gi && ty === 8) { ctx.fillStyle = '#16111f'; ctx.fillRect(x, y, TS, TS * 3); const gh = Math.round(TS * 3 * (1 - open)); if (gh > 0) ctx.drawImage(gi.img, 0, gi.h * open, gi.w, gi.h * (1 - open), x, y, TS, gh); }
-      if (gi) {
-        if (ty === 8 && G.clean >= L.req && !L.gateOpen && open === 0 && (G.t >> 4) % 2) { ctx.fillStyle = '#7dff9a'; ctx.fillRect(x + 5, y - 8, 6, 5); }
-        if (ty === 8 && G.clean < L.req) { ctx.fillStyle = '#ff4a4a'; ctx.fillRect(x + 5, y - 8, 6, 5); }
-        continue;
+      // 洛克人式魔王門：一條一條橫向鐵捲門，開門時由下往上一條條收起
+      if (ty > 0 && L.t[ty - 1][tx] === 'G') continue;
+      let n = 0; while (ty + n < L.h && L.t[ty + n][tx] === 'G') n++;
+      const H = n * TS, slatH = 4, slats = Math.floor(H / slatH), shown = Math.round(slats * (1 - L.gateAnim));
+      ctx.fillStyle = '#0d0a14'; ctx.fillRect(x, y, TS, H);
+      for (let i = 0; i < shown; i++) {
+        const sy = y + i * slatH;
+        ctx.fillStyle = '#5c6478'; ctx.fillRect(x + 1, sy, TS - 2, slatH);
+        ctx.fillStyle = '#b8c0d4'; ctx.fillRect(x + 1, sy, TS - 2, 1);
+        ctx.fillStyle = '#8a93a8'; ctx.fillRect(x + 1, sy + 1, TS - 2, 1);
+        ctx.fillStyle = '#2a2f3c'; ctx.fillRect(x + 1, sy + slatH - 1, TS - 2, 1);
       }
-      ctx.fillStyle = '#16111f'; ctx.fillRect(x, y, TS, TS);
-      if (hgt > 0) { ctx.fillStyle = '#8f96a8'; ctx.fillRect(x + 1, y, TS - 2, hgt); ctx.fillStyle = '#c9ced8'; for (let i = 0; i < hgt; i += 4) ctx.fillRect(x + 1, y + i, TS - 2, 1); ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 6, y + 2, 4, Math.min(4, hgt)); }
-      if (ty === 8 && G.clean >= L.req && !L.gateOpen && open === 0 && (G.t >> 4) % 2) { ctx.fillStyle = '#7dff9a'; ctx.fillRect(x + 5, y - 8, 6, 5); }
-      if (ty === 8 && G.clean < L.req) { ctx.fillStyle = '#ff4a4a'; ctx.fillRect(x + 5, y - 8, 6, 5); ctx.fillStyle = '#fff'; ctx.fillRect(x + 7, y - 7, 2, 3); }
+      ctx.fillStyle = '#2a2f3c'; ctx.fillRect(x, y, 2, H); ctx.fillRect(x + TS - 2, y, 2, H);
+      ctx.fillStyle = '#9aa3b8'; ctx.fillRect(x, y, 1, H); ctx.fillRect(x + TS - 2, y, 1, H);
+      ctx.fillStyle = '#3a4050'; ctx.fillRect(x - 1, y - 3, TS + 2, 3); ctx.fillStyle = '#c9ced8'; ctx.fillRect(x - 1, y - 3, TS + 2, 1);
     }
   }
 }
@@ -816,6 +820,9 @@ function drawWorld() {
       continue;
     }
     const s = p.s;
+    if (p.cloud) { const k = 1 - p.life / p.max, r = p.r0 + (p.r1 - p.r0) * Math.sqrt(k); ctx.globalAlpha = Math.min(1, (1 - k) * 1.4) * 0.85; ctx.beginPath(); ctx.arc(Math.round(p.x - cam), Math.round(p.y), r, 0, 7); ctx.fill(); continue; }
+    if (p.ring) { const k = 1 - p.life / p.max, r = p.r0 + (p.r1 - p.r0) * k; ctx.globalAlpha = 1 - k; ctx.strokeStyle = p.c; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x - cam, p.y, r, r * p.flat, 0, 0, 7); ctx.stroke(); continue; }
+    if (p.warn) { ctx.globalAlpha = (p.life % 10 < 5) ? 0.8 : 0.35; ctx.strokeStyle = p.c; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x - cam, p.y - 2, p.r0, p.r0 * 0.3, 0, 0, 7); ctx.stroke(); ctx.globalAlpha *= 0.4; ctx.fill(); continue; }
     if (p.dot) { ctx.globalAlpha = Math.min(1, p.life / 6); ctx.fillStyle = p.c; ctx.fillRect(p.x - cam - 1.5, p.y - 0.5, 3, 1); ctx.fillRect(p.x - cam - 0.5, p.y - 1.5, 1, 3); ctx.globalAlpha *= 0.35; ctx.fillRect(p.x - cam - 2, p.y - 2, 4, 4); continue; }
     ctx.fillRect(Math.round(p.x - cam - s / 2), Math.round(p.y - s / 2), Math.ceil(s), Math.ceil(s));
   }
