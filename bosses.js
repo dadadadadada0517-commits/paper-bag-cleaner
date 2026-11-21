@@ -222,7 +222,7 @@ class Boss {
       if (cry && (!this.cryT || G.t - this.cryT > 200)) { this.cryT = G.t; floatText(this.cx, this.y - 30, cry, '#fff'); }
     }
     this.hp -= dmg; this.inv = weak ? 20 : 10; this.flash = 18; Audio8.sfx('hit');
-    if (b) { FX(dmg >= 4 ? 'ink' : 'burst', b.cx, b.y + b.h / 2, dmg >= 4 ? {} : { opts: { size: 0.3 } }); if (dmg >= 4) floatText(this.cx, this.y - 4, 'BIG HIT!', '#ffd23f'); }
+    if (b) { sparks(b.cx, b.y + b.h / 2, '#bff4ff', 6, 1.6, 0.1); if (dmg >= 6) floatText(this.cx, this.y - 4, 'BIG HIT!', '#ffd23f'); }
     if (this.hp <= 0) { this.hp = 0; this.defeated = true; this.st = 0; G.onBossDefeated(this); }
     return true;
   }

@@ -496,7 +496,7 @@ function update() {
       if (I.pressed.ult && G.ultra >= 100 && !G.player.dead && !G.dialog && !script) { ultimate(); break; }
       if (I.pressed.swap && G.weapons.length > 1) {
         const i = (G.weapons.indexOf(G.weapon) + 1) % G.weapons.length; G.weapon = G.weapons[i];
-        Audio8.sfx('cursor'); G.swapT = 60; FX('burst', G.player.cx, G.player.cy, { opts: { size: 0.3, color: WEAPONS[G.weapon].color } });
+        Audio8.sfx('cursor'); G.swapT = 60;
       }
       worldUpdate(false);
       break;
@@ -890,7 +890,7 @@ function drawHUD() {
       const W = WEAPONS[G.weapon];
       const wb = hudBarH('hud_wpn', 40, 40, (G.ammo[G.weapon] || 0) / 28, W.color, '#ffffff');
       if (wb) { hudSpr('ic_' + G.weapon, wb.ix + wb.iw + 4, 40 + (wb.s.h - 13) / 2); txt(W.name, wb.ix + 2, 40 + wb.s.h, 7, W.color); }
-    } else if (G.weapons && G.weapons.length > 1) { hudSpr('ic_water', 44, 42); txt('S 換武器', 60, 44, 7, '#9ab'); }
+    }
 
     if (G.swapT > 0) { G.swapT--; const W = WEAPONS[G.weapon]; txt(W.name, 200, 60, 12, W.color, 'center'); }
     return;

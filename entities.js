@@ -82,7 +82,7 @@ class Player {
     this.climbing = false; this.charge = 0;
     if (this.hp <= 0) { this.die(); return true; }
     this.hurtT = 18; this.inv = 110; this.vx = (this.cx < fromX ? -1 : 1) * 1.2; this.vy = -2;
-    FX('burst', this.cx, this.cy, { opts: { color: '#ff6a6a' } });
+    sparks(this.cx, this.cy, '#ff8a8a', 6, 1.6, 0.1);
     return true;
   }
   die() {
@@ -191,7 +191,7 @@ class Player {
       }
       G.bullets.push(new Bullet(bx, by, this.face, lvl));
       this.shootT = 16;
-      if (lvl) { Audio8.sfx('bigshot'); G.shake = 3; FX('burst', bx, by, { opts: { size: lvl === 2 ? 0.55 : 0.35 } }); } else Audio8.sfx('shoot');
+      if (lvl) { Audio8.sfx('bigshot'); G.shake = 3; sparks(bx, by, '#bff4ff', 8, 2, 0); } else Audio8.sfx('shoot');
     };
     if (I.pressed.shoot) fire(0);
     if (A.charge) {
@@ -228,25 +228,9 @@ class Player {
     return k;
   }
   sprKey() {
-    // 洛克人式動作（h3 精靈圖）優先
-    if (this.crouch) return this.lowT > 0 || this.shootT > 0 ? 'h_charge' : 'h_j0';
-    if (SPR.has('m_run0') && !this.climbing && !(this.frozen && G.winPose) && this.dashT === 0 && this.lowT <= 0) {
-      const sh = this.shootT > 0, N = SPR.has('n_run0');
-      if (this.hurtT > 0) return 'm_hurt';
-      if (!this.onGround) return sh ? 'm_jshoot' : N ? 'n_jump' : 'm_jump';
-      if (Math.abs(this.vx) > 0.1 && this.slipT === 0) {
-        if (this.runT < 6 && !sh) return 'm_step';
-        const f = [0, 1, 2, 1][Math.floor(this.runT / 7) % 4];
-        return (sh ? 'm_rs' : N ? 'n_run' : 'm_run') + f;
-      }
-      if (this.slipT > 0) return 'h_stagger';
-      if (sh) return N ? 'n_shoot' : 'm_shoot';
-      // 站立：水槍放下的自然站姿（右手持槍）
-      if (SPR.has('h_idle0')) return Math.floor(this.anim / 40) % 2 ? 'h_idle0' : 'h_idle1';
-      return 'm_idle';
-    }
     if (this.hurtT > 0) return this.hurtT > 12 ? 'h_hurt' : 'h_stagger';
-    if (this.climbing) return this.shootT > 0 && SPR.has('m_shoot') ? 'm_jshoot' : 'h_climb0';
+    if (this.crouch) return this.lowT > 0 || this.shootT > 0 ? 'h_charge' : 'h_j0';
+    if (this.climbing) return 'h_climb0';
     if (this.frozen && G.winPose) return 'h_win';
     if (this.dashT > 0) return 'h_dash';
     if (!this.onGround) return this.vy < -2 ? 'h_j1' : this.vy < 1.5 ? 'h_j2' : 'h_j3';
@@ -256,8 +240,7 @@ class Player {
     if (this.hp < 8 && this.idleT > 60) return 'h_stagger';
     if (this.lowT > 0) return 'h_charge';
     if (this.shootT > 0) return 'h_shoot';
-    if (this.idleT > 150) return Math.floor(this.anim / 30) % 2 ? 'h_idle0' : 'h_idle1';
-    return 'h_idleGun';
+    return Math.floor(this.anim / 40) % 2 ? 'h_idle0' : 'h_idle1';
   }
   draw(ctx, cx) {
     if (this.dead) return;
@@ -315,7 +298,7 @@ class Bullet {
   kill(splash) {
     if (this.dead) return; this.dead = true;
     if (this.fx) { fxHit(this.fx); }
-    if (splash) { sparks(this.cx, this.y + this.h / 2, '#9fe9ff', this.big ? 12 : 5, 1.6, 0.15); if (!this.big) FX('burst', this.cx, this.y + this.h / 2, { opts: { size: 0.2, quantity: 5, color: '#9fe9ff' } }); }
+    if (splash) { sparks(this.cx, this.y + this.h / 2, '#9fe9ff', this.big ? 12 : 5, 1.6, 0.15);  }
   }
   hitEnemy(e) {
     if (this.hitSet.has(e)) return false;
@@ -576,7 +559,7 @@ class Enemy {
   damage(dmg, b) {
     if (this.invuln || this.state === 'tamed' || this.state === 'sorry') return false;
     this.hp -= dmg; this.flash = 6; Audio8.sfx('hit');
-    if (b) FX('burst', b.cx, b.y + b.h / 2, { opts: { size: 0.25, quantity: 6 } });
+    if (b) sparks(b.cx, b.y + b.h / 2, '#bff4ff', 5, 1.4, 0.1);
     if (this.hp <= 0) this.defeat();
     return true;
   }
@@ -596,11 +579,11 @@ class Enemy {
     const f2 = Math.floor(this.t / 8) % 2, f8 = Math.floor(this.t / 4) % 8, f4 = Math.floor(this.t / 4) % 4;
     switch (this.code) {
       case 'd': case 'D': {
-        const p = this.code === 'D' ? 'Wd_' : 'd_';
-        if (this.state === 'tamed') return p + 'happy' + f2;
+        const p = 'd_'; // 白狗改用同一套 GPT 狗狗（白色重新上色版太醜）
+        if (this.state === 'tamed') return this.onGround && Math.abs(this.vx) > 0.5 ? p + 'walk' + (Math.floor(this.t / 2) % 8) : p + 'happy' + f2;
         if (this.state === 'poop') return p + 'poop' + (this.st > 30 ? 1 : 0);
         if (this.state === 'bark') return p + 'bark' + (Math.floor(this.st / 6) % 2);
-        if (this.state === 'lunge') return p + 'lunge' + (this.onGround ? 1 : 0);
+        if (this.state === 'lunge') return this.onGround ? p + 'walk' + (Math.floor(this.t / 2) % 8) : p + 'lunge0';
         return this.vx ? p + 'walk' + f8 : p + 'stand';
       }
       case 'f': return 'fly' + (Math.floor(this.t / 3) % 2);
