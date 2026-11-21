@@ -34,8 +34,8 @@ const SPR = (() => {
     hud1: { tight: true, dir: 'art', rows: [['hud_hp', 'hud_clean', 'hud_ult', 'hud_wpn', 'hud_ring']], h: [[58, { w: 96 }, { w: 80 }, { w: 80 }, 24]] },
     hud2: { tight: true, dir: 'art', rows: [['ic_water', 'ic_bag', 'ic_bubble', 'ic_tornado', 'ic_broom', 'ic_star', 'ic_heart', 'ic_orb']], h: [[13, 13, 13, 13, 13, 13, 13, 13]] },
     ui_labels: { tight: true, dir: 'ui', rows: [['lb_clean', 'lb_ult', 'lb_wpn', 'lb_charge']], h: [[10, 10, 10, 10]] },
-    v_rhino: { tight: true, rows: [['vr_idle', 'vr_run0', 'vr_run1', 'vr_run2', 'vr_run3', 'vr_ko']], h: [[46, 40, 40, 40, 40, { w: 44 }]] },
-    v_typhoon: { tight: true, rows: [['vt_fly0', 'vt_fly1', 'vt_blow', 'vt_laugh', 'vt_ko']], h: [[52, 52, 52, 52, { w: 52 }]] },
+    v_rhino: { tight: true, rows: [['vr_idle', 'vr_run0', 'vr_run1', 'vr_run2', 'vr_run3', 'vr_ko']], h: [[70, 62, 62, 62, 62, { w: 68 }]] },
+    v_typhoon: { tight: true, rows: [['vt_fly0', 'vt_fly1', 'vt_blow', 'vt_laugh', 'vt_ko']], h: [[80, 80, 80, 80, { w: 80 }]] },
     npc: { rows: [['chief0', 'chief1', 'chief2', 'chief3', 'kid0', 'kid1', 'kid2', 'kid3'], ['owner0', 'owner1', 'owner2', 'owner3', 'owner_t0', 'owner_t1', 'owner_s0', 'owner_s1']], h: [[42, 42, 42, 42, 32, 32, 32, 32], 42] },
   };
   const f = {};

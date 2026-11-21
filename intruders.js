@@ -1,13 +1,13 @@
 // ===== 亂入怪人：犀牛怪人（衝撞）、颱風怪人（飛行吹風丟垃圾），偶爾被超人打跑 =====
 const INTRUDERS = {
-  rhino: { name: '犀牛怪人', hp: 8, w: 30, h: 40, lines: ['閃開閃開～犀牛衝鋒！', '哼！擋我者死！'], ko: '嗚哇——我記住你了！' },
-  typhoon: { name: '颱風怪人', hp: 10, w: 30, h: 40, lines: ['呼～呼～把垃圾吹滿街！', '颱風天最愛亂丟東西啦！'], ko: '我…我還會再來的～' },
+  rhino: { name: '犀牛怪人', hp: 14, w: 44, h: 60, lines: ['閃開閃開～犀牛衝鋒！', '哼！擋我者死！'], ko: '嗚哇——我記住你了！' },
+  typhoon: { name: '颱風怪人', hp: 16, w: 44, h: 60, lines: ['呼～呼～把垃圾吹滿街！', '颱風天最愛亂丟東西啦！'], ko: '我…我還會再來的～' },
 };
 G.intruderTimer = 2100;
 
 function floorAt(x, fallback) {
   const tx = Math.floor(x / TS);
-  for (let ty = 2; ty < G.level.h; ty++) if (isSolid(tx, ty) || isOneWay(tx, ty)) return ty * TS;
+  for (let ty = Math.max(2, Math.floor((fallback - 6) / TS)); ty < G.level.h; ty++) if (isSolid(tx, ty) || isOneWay(tx, ty)) return ty * TS;
   return fallback;
 }
 
@@ -58,7 +58,7 @@ function updateIntruder() {
       I.vx = I.dir * 3.4; I.x += I.vx; I.y = floorAt(cx + I.dir * 6, I.y + I.h) - I.h;
       if (I.t % 6 === 0) G.parts.push({ x: cx - I.dir * 12, y: I.y + I.h - 2, vx: -I.dir * 0.6, vy: -0.4, life: 18, max: 18, c: '#e8dcc0', s: 1, g: 0, cloud: true, r0: 2, r1: 6 });
       if (I.t % 14 === 0) G.shake = Math.max(G.shake, 1.5);
-      if (overlap(I, P)) P.hurt(3, cx, '被犀牛撞飛！');
+      if (overlap(I, P)) P.hurt(4, cx, '被犀牛撞飛！');
       if ((I.dir > 0 && I.x > G.camX + VW + 60) || (I.dir < 0 && I.x + I.w < G.camX - 60)) G.intruder = null;
     }
   } else {
