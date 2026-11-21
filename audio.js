@@ -100,6 +100,17 @@ const Audio8 = (() => {
       bass: '|D2 D3 A2 D3 D2 D3 A2 D3|A2 A3 E3 A3 A2 A3 E3 A3|G2 G3 D3 G3 G2 G3 D3 G3|A2 A3 E3 A3 A2 A3 C#3 E3|G2 G3 D3 G3 G2 G3 D3 G3|A2 A3 E3 A3 A2 A3 E3 A3|Bb2 Bb3 F3 Bb3 A2 A3 E3 A3|D2 D3 A2 D3 D2:8|',
       harm: '|~D4,F4,A4|~C#4,E4,A4|~G4,Bb4,D5|~A4,C#5,E5|~G4,Bb4,D5|~A4,C#5,E5|~Bb4,D5,F5|~D4,F4,A4|',
       drums: 'kkhsk.hsk.hsk.hs' },
+    // 魔王介紹畫面：短而有壓迫感（小調、低音重擊）
+    bossintro: { bpm: 132, loop: false,
+      lead: '|C5:2 C5:1 C5:1 Eb5:3 D5:1 C5:2 B4:2 G4:4|Ab4:2 Ab4:1 Ab4:1 C5:3 B4:1 Ab4:2 G4:2 F#4:4|G4:3 G4:1 C5:3 Eb5:1 G5:2 F#5:2 G5:4|C6:12 -:4|',
+      bass: '|C2:2 C2:1 C2:1 C2:4 C2:2 C2:2 G1:4|Ab1:2 Ab1:1 Ab1:1 Ab1:4 Ab1:2 Ab1:2 D2:4|G1:4 G1:4 G1:4 G1:4|C2:12 -:4|',
+      harm: '|~C4,Eb4,G4|~Ab3,C4,Eb4|~G3,B3,D4|~C4,Eb4,G4|',
+      drums: 'k..sk..sk.k.s.ss' },
+    // 洛克人式進關開場曲（READY 時播放）
+    ready: { bpm: 150, loop: false,
+      lead: '|C5:1 E5:1 G5:1 C6:1 E5:1 G5:1 C6:1 E6:1 G5:1 C6:1 E6:1 G6:1 E6:2 G6:2|C7:6 B6:1 C7:1 D7:8|',
+      bass: '|C3:4 G2:4 C3:4 E3:4|G2:8 G3:8|',
+      harm: '|~C5,E5,G5|~G4,B4,D5|', drums: 'k.h.k.h.k.hsk.sk' },
     start: { bpm: 150, loop: false, lead: '|C5:1 E5:1 G5:1 C6:3 G5:2 C6:8|', bass: '|C3:6 G2:2 C3:8|', drums: 'k.....s.k.......' },
     victory: { bpm: 140, loop: false, lead: '|G4:2 C5:2 E5:2 G5:4 E5:2 G5:4|C6:16|', bass: '|C3:4 E3:4 G3:4 E3:4|C3:16|', harm: '|~C4,E4,G4|~E4,G4,C5|', drums: 'k.h.s.h.k.h.s.ss' },
     getweapon: { bpm: 150, loop: false, lead: '|C5:2 E5:2 G5:2 C6:2 E5:2 G5:2 C6:2 E6:2|G6:16|', bass: '|C3:8 E3:8|G3:16|', harm: '|~C5,E5,G5|~E5,G5,C6|' },
@@ -278,6 +289,7 @@ const Audio8 = (() => {
     ultcharge() { tone('sawtooth', 100, 600, 1.2, 0.12); },
     ultfire() { noise(1.2, 0.4, 'bandpass', 600, 3000, 0, 1); tone('sawtooth', 200, 60, 1.0, 0.2); },
     ultwave() { noise(1.0, 0.35, 'lowpass', 3000, 300); },
+    pop() { noise(0.12, 0.18, 'bandpass', 1400, 500, 0, 1.2); tone('triangle', 660, 990, 0.08, 0.1, 0.02); },
     boing() { tone('sine', 220, 660, 0.12, 0.25); },
   };
   // 外部音效（ElevenLabs 生成，放在 assets/sfx/<名稱>.mp3）優先，沒有就用合成音

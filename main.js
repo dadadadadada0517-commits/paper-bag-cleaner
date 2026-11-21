@@ -67,17 +67,95 @@ G.tip = (key) => { if (!TIPS[key] || G.tipsShown.has(key)) return; G.tipsShown.a
 function drawTip() {
   if (!G.curTip && G.tipQ.length) G.curTip = { text: G.tipQ.shift(), t: 0 };
   const c = G.curTip; if (!c) return;
-  if (c.t > 260) { G.curTip = null; return; }
-  const inK = Math.min(1, c.t / 12), outK = c.t > 240 ? (c.t - 240) / 20 : 0, y = 32 - (1 - inK) * 50 - outK * 50;
-  const im = UI.ui_tipbanner, w = 250, h = im ? w * im.height / im.width : 34;
+  if (c.t > 170) { G.curTip = null; return; }
+  const inK = Math.min(1, c.t / 12), outK = c.t > 155 ? (c.t - 155) / 15 : 0, y = 2 - (1 - inK) * 40 - outK * 40;
+  const im = UI.ui_tipbanner, w = 190, h = im ? w * im.height / im.width : 28;
   sctx.globalAlpha = 1 - outK;
   if (im) sctx.drawImage(im, (200 - w / 2) * K, y * K, w * K, h * K); else box(50, y, 300, 26, '#fff8e0', '#2f9e8a');
-  const ls = c.text.split('\n'); ls.forEach((l, i) => txt(l, 213, y + h / 2 - ls.length * 4.5 + i * 9, 7.5, '#3a2410', 'center', null));
+  const ls = c.text.split('\n'); ls.forEach((l, i) => txt(l, 210, y + h / 2 - ls.length * 3.6 + i * 7.2, 6, '#3a2410', 'center', null));
   sctx.globalAlpha = 1;
 }
-// GPT 中景圖（洋紅底去背）
-const MIDIMG = {};
-[1, 2, 3, 4].forEach(n => { const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.png'; });
+// GPT 中景圖、深淵圖（洋紅底去背）
+const MIDIMG = {}, PITIMG = {};
+[1, 2, 3, 4].forEach(n => {
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.png';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.png';
+});
+
+// ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
+const CAMEOS = {
+  m: { name: '中央山脈超人', fly: 'cm_fly', idle: 'cm_wave', throw: 'cm_throw', lines: ['愛護山林，垃圾帶下山！', '小編加油！這個給你！', '保護環境，從撿起腳邊的垃圾開始！'] },
+  s: { name: '針筒超人', fly: 'cs_fly', idle: 'cs_thumb', throw: 'cs_throw', lines: ['清除積水，預防登革熱！', '打起精神！幫你補充能量！', '垃圾堆積會孳生病媒蚊喔！'] },
+};
+G.cameoTimer = 1500;
+function updateCameo() {
+  if (G.mode !== 'play' || script) return;
+  const P = G.player;
+  if (!G.cameo) {
+    if (--G.cameoTimer > 0) return;
+    G.cameoTimer = 2400 + Math.floor(rnd(0, 1800));
+    const id = Math.random() < 0.5 ? 'm' : 's', dir = Math.random() < 0.5 ? 1 : -1, gift = Math.random() < 0.55;
+    G.cameo = { id, gift, dir, t: 0, x: G.camX + (dir > 0 ? -60 : VW + 60), y: gift ? 40 : rnd(36, 70), say: '', sayT: 0, phase: 'in' };
+    Audio8.sfx('warp');
+    return;
+  }
+  const c = G.cameo, C = CAMEOS[c.id]; c.t++;
+  if (!c.gift) { // 遠方飛過
+    c.x += c.dir * 2.2; c.y += Math.sin(c.t / 12) * 0.4;
+    if (c.t === 30) { c.say = C.lines[Math.random() < 0.5 ? 0 : 2]; c.sayT = 150; }
+    if (Math.abs(c.x - G.camX - 200) > 300) G.cameo = null;
+  } else {
+    if (c.phase === 'in') { const tx = P.cx - c.dir * 30; c.x += (tx - c.x) * 0.06; c.y += (34 - c.y) * 0.06; if (Math.abs(tx - c.x) < 4) { c.phase = 'hover'; c.t = 0; c.say = C.lines[1]; c.sayT = 110; Audio8.sfx('magic'); } }
+    else if (c.phase === 'hover') { c.y = 34 + Math.sin(c.t / 10) * 2; if (c.t === 60) { c.phase = 'throw'; c.t = 0; } }
+    else if (c.phase === 'throw') {
+      if (c.t === 6) { const r = Math.random(), type = r < 0.4 ? 'boba' : r < 0.7 ? 'star' : 'egg'; const it = new Item(type, c.x + c.dir * 10, c.y + 10, true); it.vy = -2; G.items.push(it); Audio8.sfx('throw'); FX('heal', c.x, c.y + 10, { opts: { size: 0.3 } }); }
+      if (c.t > 24) { c.phase = 'out'; c.t = 0; }
+    } else { c.x += c.dir * 3; c.y -= 0.6; if (Math.abs(c.x - G.camX - 200) > 300) G.cameo = null; }
+  }
+  if (c.sayT > 0) c.sayT--;
+}
+function drawCameo(cam, back) {
+  const c = G.cameo; if (!c || (back !== !c.gift)) return;
+  const C = CAMEOS[c.id];
+  const key = c.gift && c.phase === 'hover' ? C.idle : c.gift && c.phase === 'throw' ? C.throw : C.fly + (Math.floor(c.t / 6) % 2);
+  const s = SPR.f[key]; if (!s) return;
+  const k = back ? 0.7 : 1;
+  ctx.save(); ctx.translate(Math.round(c.x - cam), Math.round(c.y)); ctx.scale(c.dir * k, k); if (back) ctx.globalAlpha = 0.92;
+  ctx.drawImage(s.img, -s.ax, -s.h / 2, s.w, s.h); ctx.restore();
+  if (c.sayT > 0) G.cameoSay = { x: c.x, y: c.y - s.h * k / 2 - 6, text: C.name + '：' + c.say };
+  else G.cameoSay = null;
+}
+// 小編行進中自言自語（配合場景）
+G.mumbleT = 600;
+function updateMumble() {
+  const P = G.player; if (G.mode !== 'play' || script || P.dead) return;
+  if (G.heroSay && --G.heroSay.t <= 0) G.heroSay = null;
+  if (P.slipT === 20) { G.heroSay = { text: '咦…我好像踩到了什麼…', t: 110 }; return; }
+  if (--G.mumbleT > 0) return;
+  G.mumbleT = 1100 + Math.floor(rnd(0, 900));
+  const near = G.items.filter(i => (i.type === 'poop' || i.type === 'big') && Math.abs(i.cx - P.cx) < 220).length;
+  const pool = ['我才不是大叔！我才 45 歲！', '我肚子好餓…等等去吃夜市。', '這邊也太髒了吧…'];
+  if (near >= 3) pool.push('狗屎好多…到底是誰不撿！', '狗屎好多…', '狗屎好多…');
+  if (G.clean / Math.max(1, G.level.total) > 0.5) pool.push('乾淨多了，心情真好！');
+  G.heroSay = { text: pool[Math.floor(rnd(0, pool.length))], t: 130 };
+}
+function drawHeroSay() {
+  const s = G.heroSay; if (!s || !G.zc || G.dialog) return;
+  const P = G.player, [x, y] = worldToScreen(P.cx, P.y - 18);
+  sctx.font = `${Math.round(7 * K)}px Cubic11, "Microsoft JhengHei", sans-serif`;
+  const w = sctx.measureText(s.text).width / K + 10, bx = Math.max(4, Math.min(VW - w - 4, x - w / 2)), by = Math.max(46, y - 12);
+  sctx.globalAlpha = Math.min(1, s.t / 15);
+  box(bx, by, w, 13, '#ffffff', '#16111f'); txt(s.text, bx + w / 2, by + 3, 7, '#16111f', 'center', null);
+  sctx.fillStyle = '#16111f'; sctx.fillRect((x - 1) * K, (by + 13) * K, 3 * K, 3 * K);
+  sctx.globalAlpha = 1;
+}
+function drawCameoSay() {
+  const b = G.cameoSay; if (!b || !G.zc) return;
+  const [x, y] = worldToScreen(b.x, b.y);
+  sctx.font = `${Math.round(7 * K)}px Cubic11, "Microsoft JhengHei", sans-serif`;
+  const w = sctx.measureText(b.text).width / K + 10, bx = Math.max(4, Math.min(VW - w - 4, x - w / 2)), by = Math.max(46, y - 14);
+  box(bx, by, w, 13, '#fffdf2', '#2f9e8a'); txt(b.text, bx + w / 2, by + 3, 7, '#2a1a10', 'center', null);
+}
 // 在畫面座標（遊戲單位）置中畫一張 UI 圖，寬度 w
 function uiImg(k, cx, cy, w, alpha = 1) { const c = UI[k]; if (!c) return false; const h = w * c.height / c.width; sctx.globalAlpha = alpha; sctx.drawImage(c, (cx - w / 2) * K, (cy - h / 2) * K, w * K, h * K); sctx.globalAlpha = 1; return true; }
 const PORTRAIT = { hero: 'p_hero', witch: 'p_witch', abo: 'p_abo', lady: 'p_lady', dogking: 'p_dogking', chief: 'p_chief', kid: 'p_kid' };
@@ -140,14 +218,16 @@ function* talk(lines) {
 function* playVideo(src, maxSec = 12) {
   const v = document.createElement('video');
   v.src = src; v.playsInline = true; v.muted = Audio8.isMuted(); v.preload = 'auto';
-  Object.assign(v.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', objectFit: 'contain', background: '#000', zIndex: 5 });
+  // 影片疊在遊戲畫面上方，用淡入淡出銜接（不再硬切）
+  Object.assign(v.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', objectFit: 'contain', background: 'rgba(0,0,0,0.85)', zIndex: 5, opacity: '0', transition: 'opacity .45s ease' });
   let state = 'load';
-  v.addEventListener('loadeddata', () => { if (state === 'load') { state = 'play'; document.body.appendChild(v); v.play().catch(() => { state = 'done'; }); } });
+  v.addEventListener('loadeddata', () => { if (state === 'load') { state = 'play'; document.body.appendChild(v); v.play().catch(() => { state = 'done'; }); requestAnimationFrame(() => requestAnimationFrame(() => { v.style.opacity = '1'; })); } });
   v.addEventListener('error', () => { state = 'fail'; });
   v.addEventListener('ended', () => { state = 'done'; });
-  setTimeout(() => { if (state === 'load') state = 'fail'; }, 1500);
+  setTimeout(() => { if (state === 'load') state = 'fail'; }, 4000);
   const t0 = performance.now();
-  yield () => state === 'fail' || state === 'done' || (state === 'play' && (G.input.pressed.start || performance.now() - t0 > maxSec * 1000));
+  yield () => state === 'fail' || state === 'done' || (state === 'play' && (G.input.pressed.start || performance.now() - t0 > maxSec * 1000) || state === 'play' && v.duration && v.currentTime > v.duration - 0.45);
+  if (state !== 'fail') { v.style.opacity = '0'; G.flash = 8; yield 26; }
   v.pause(); if (v.parentNode) v.remove();
   return state !== 'fail';
 }
@@ -159,6 +239,7 @@ function loadLevel(n) {
   const t = D.map.map(r => r.split(''));
   const L = { def: D, theme: D.theme, w: t[0].length, h: t.length, t, gateOpen: false, gateAnim: 0, yoku: [], tt: 0 };
   G.tipQ = []; G.tipsShown = new Set(); G.curTip = null;
+  G.cameo = null; G.heroSay = null; G.cameoTimer = 1500; G.mumbleT = 500;
   Object.assign(G, { splashes: [], ultraBeam: null, ultraWave: null, ultraAura: 0, ultraLift: 0, parts: [], texts: [], bullets: [], eshots: [], items: [], enemies: [], npcs: [], platforms: [], boss: null, clean: 0, dynPoops: 0, checkpoint: null, dark: 0, freeze: false });
   if (window.VFX) VFX.clear();
   let total = 0, start = { x: 40, y: 176 }, npcI = 0, yokuCells = [];
@@ -225,9 +306,9 @@ function* storyIntro() {
 function startStage(n) {
   G.mode = 'stageCard'; G.cardT = 0; G.cardStage = n; Audio8.stopMusic(); Audio8.sfx('select');
   run((function* () {
-    yield 20; Audio8.music('start'); yield 170;
-    loadLevel(n); G.mode = 'ready'; G.readyT = 0; G.player.frozen = true;
-    yield 100;
+    yield 6; Audio8.music('bossintro'); yield 214;
+    loadLevel(n); G.mode = 'ready'; G.readyT = 0; G.player.frozen = true; Audio8.music('ready');
+    yield 150;
     G.mode = 'play'; G.player.frozen = false; Audio8.music(LEVEL_DATA[n - 1].music);
   })());
 }
@@ -245,11 +326,10 @@ function* bossSequence() {
   for (let i = 30; i >= 0; i--) { L.gateAnim = i / 30; yield 1; }
   G.mode = 'bossIntro';
   // 魔王出場動畫：先試 Grok 生成的影片，沒有就用遊戲內動畫
+  // 魔王出場動畫（Grok 影片，淡入淡出）
+  yield* playVideo('video-boss' + G.stage + '.mp4', 8);
   Audio8.sfx('siren'); G.warnT = 120; yield 60;
   G.boss = new Boss(D.boss, L.bossSpawn.x, L.arena && 11 * TS);
-  // 魔王眼部特寫橫帶
-  G.cutin = { t: 0, who: D.boss, name: D.bossName, sub: 'BOSS', dur: 70, color: '#ff5a8a', y: 70 }; Audio8.sfx('stomp');
-  yield () => G.cutin.t > 70; G.cutin = null;
   yield () => G.boss.entrance();
   yield* talk(D.intro);
   // 血條充填
@@ -265,7 +345,6 @@ G.onBossDefeated = (b) => {
     for (const e of G.enemies) if (e.code === 's') e.dead = true;
     FX(b.kind === 'dogking' ? 'star' : 'converge', b.cx, b.cy, { opts: { size: b.kind === 'dogking' ? 0.9 : 0.7 } });
     yield 110;
-    FX('gold', b.cx, b.floorY, { opts: { size: 0.6 }, life: 1.5 });
     Audio8.music('victory'); G.winPose = true; yield 150; G.winPose = false;
     yield* talk(G.level.def.outro);
     const before = { ...G.abilities }, lvBefore = G.gunLv;
@@ -275,7 +354,7 @@ G.onBossDefeated = (b) => {
     writeSave(); syncAbilities();
     const wkey = STAGE_WEAPON[G.stage];
     const newPassive = ['charge', 'djump', 'dash'].filter(k => G.abilities[k] && !before[k]);
-    G.getInfo = { weapon: firstClear ? wkey : null, passives: newPassive, lv: G.gunLv, lvUp: G.gunLv > lvBefore };
+    G.getInfo = { weapon: wkey, passives: newPassive, lv: G.gunLv, lvUp: G.gunLv > lvBefore };
     const reward = wkey;
     if (reward) {
       // 吸收魔王能力的特效
@@ -288,7 +367,7 @@ G.onBossDefeated = (b) => {
       FX('relic', P.cx, P.y + P.h, { life: 1.4, opts: { size: 0.6, color: ab.color } }); FX('heal', P.cx, P.y + P.h, { opts: { color: ab.color } });
       G.heroGlow = 90; Audio8.sfx('bigshot'); G.flash = 10; floatText(P.cx, P.y - 14, '吸收能力：' + ab.name + '！', ab.color, true);
       yield 100; G.absorb = null;
-      G.mode = 'getAbility'; G.getT = 0; G.getAb = reward; Audio8.music('getweapon');
+      G.mode = 'getAbility'; G.getT = 0; G.getAb = reward; Audio8.music('getweapon', () => Audio8.music('title'));
       yield () => G.getT > 90 && G.input.pressed.ok;
       goSelect();
     } else {
@@ -532,6 +611,7 @@ function worldUpdate(cutscene) {
   if (G.warnT > 0) G.warnT--;
   if (G.cutin) G.cutin.t++;
   if (G.curTip) G.curTip.t++;
+  if (G.level) { updateCameo(); updateMumble(); }
 }
 
 // ---------- 繪製：世界 ----------
@@ -542,7 +622,7 @@ function drawBackground() {
   const bg = IMG[D.bg], fx25 = !G.lowFx;
   if (bg) {
     // 遠景：景深模糊＋輕微放大（2.5D 景深感）
-    if (fx25) ctx.filter = 'blur(2.5px)';
+    if (fx25) ctx.filter = 'blur(3px) brightness(0.78) saturate(0.85)';
     const h = 262, w = Math.round(bg.width * h / bg.height), off = Math.floor(cam * 0.15) % w;
     for (let x = -off - 4; x < VW; x += w) ctx.drawImage(bg, x, -22, w, h);
     ctx.filter = 'none';
@@ -550,11 +630,14 @@ function drawBackground() {
   // GPT 中景（填滿遠景與地面之間）：視差 0.6、輕微景深
   const mg = MIDIMG[L.theme];
   if (mg) {
-    if (fx25) ctx.filter = 'blur(0.6px)';
-    const h = 104, w = Math.round(mg.width * h / mg.height), off = Math.floor(cam * 0.6) % w;
+    // 中景往後退：較暗、較低飽和、模糊（角色層才會清楚）
+    const dim = { 1: 'brightness(0.72) saturate(0.75)', 2: 'brightness(0.52) saturate(0.6)', 3: 'brightness(0.6) saturate(0.7)', 4: 'brightness(0.6) saturate(0.7)' }[L.theme];
+    ctx.filter = (fx25 ? 'blur(1.4px) ' : '') + dim;
+    const h = 92, w = Math.round(mg.width * h / mg.height), off = Math.floor(cam * 0.6) % w;
     for (let x = -off - 1; x < VW; x += w - 1) ctx.drawImage(mg, x, 178 - h, w, h);
     ctx.filter = 'none';
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(0, 172, VW, 4);
+    const sep = ctx.createLinearGradient(0, 120, 0, 178); sep.addColorStop(0, 'rgba(10,8,20,0)'); sep.addColorStop(1, 'rgba(10,8,20,0.45)');
+    ctx.fillStyle = sep; ctx.fillRect(0, 120, VW, 58);
     return;
   }
   if (fx25) ctx.filter = 'blur(1px)';
@@ -628,14 +711,15 @@ function drawTiles() {
   const x0 = Math.floor(cam / TS), x1 = Math.min(L.w - 1, x0 + 26);
   // 掉落洞口：畫成深淵（中景底下不再露出遠景），兩側加土壁陰影
   const pitTop = { 1: ['#3a2614', '#0a0604'], 2: ['#2a1d2e', '#05030a'], 3: ['#2c4a1e', '#061006'], 4: ['#1c1f3a', '#020208'] }[th];
-  for (let tx = x0; tx <= x1; tx++) {
-    if (L.t[L.h - 1][tx] !== '.' && L.t[L.h - 1][tx] !== 'Y') continue;
-    const x = tx * TS - cam, top = 11 * TS - 6;
-    const gr = ctx.createLinearGradient(0, top, 0, VH); gr.addColorStop(0, pitTop[0]); gr.addColorStop(0.35, pitTop[1]); gr.addColorStop(1, '#000');
-    ctx.fillStyle = gr; ctx.fillRect(x, top, TS, VH - top);
-    if (th === 3) { ctx.fillStyle = 'rgba(120,210,60,0.55)'; ctx.fillRect(x, VH - 14 + Math.sin((G.t + tx * 9) / 14) * 1.5, TS, 14); }
-    if ('#^'.includes(L.t[11][tx - 1] || '.')) { const g2 = ctx.createLinearGradient(x, 0, x + 6, 0); g2.addColorStop(0, 'rgba(0,0,0,0.55)'); g2.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g2; ctx.fillRect(x, top, 6, VH - top); }
-    if ('#^'.includes(L.t[11][tx + 1] || '.')) { const g2 = ctx.createLinearGradient(x + TS, 0, x + TS - 6, 0); g2.addColorStop(0, 'rgba(0,0,0,0.55)'); g2.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g2; ctx.fillRect(x + TS - 6, top, 6, VH - top); }
+  const pitAt = tx => tx >= 0 && tx < L.w && (L.t[L.h - 1][tx] === '.' || L.t[L.h - 1][tx] === 'Y');
+  for (let tx = x0 - 1; tx <= x1; tx++) {
+    if (!pitAt(tx) || pitAt(tx - 1) && tx > x0 - 1) continue;
+    let e = tx; while (pitAt(e + 1)) e++;
+    const x = tx * TS - cam, w = (e - tx + 1) * TS, top = 11 * TS - 4, pi = PITIMG[th];
+    if (pi) { const pad = 8; ctx.fillStyle = '#050307'; ctx.fillRect(x, top + 6, w, VH - top); ctx.drawImage(pi, x - pad, top, w + pad * 2, VH - top + 4); }
+    else { const gr = ctx.createLinearGradient(0, top, 0, VH); gr.addColorStop(0, pitTop[0]); gr.addColorStop(0.35, pitTop[1]); gr.addColorStop(1, '#000'); ctx.fillStyle = gr; ctx.fillRect(x, top, w, VH - top); }
+    if (th === 3) { ctx.fillStyle = 'rgba(120,210,60,0.45)'; ctx.fillRect(x, VH - 10 + Math.sin((G.t + tx * 9) / 14) * 1.5, w, 10); }
+    tx = e;
   }
   for (let ty = 0; ty < L.h; ty++) for (let tx = x0; tx <= x1; tx++) {
     const c = L.t[ty][tx]; if (c === '.') continue;
@@ -679,13 +763,14 @@ function drawTiles() {
 function drawWorld() {
   ctx.setTransform(RS, 0, 0, RS, 0, 0); ctx.imageSmoothingEnabled = false;
   const cam = Math.floor(G.camX);
-  drawBackground(); if (!G.lowFx) drawTopFaces(G.level, cam); drawTiles();
+  drawBackground(); drawCameo(cam, true); drawTiles();
   if (!G.lowFx) { shadowAt(G.player, cam, 9); for (const e of G.enemies) if (Math.abs(e.x - cam - 200) < 240 && !e.fly) shadowAt(e, cam); if (G.boss) shadowAt(G.boss, cam, G.boss.w * 0.6); for (const n of G.npcs) shadowAt(n, cam, 8); }
   for (const it of G.items) if (Math.abs(it.x - cam - 200) < 230) it.draw(ctx, cam);
   for (const p of G.platforms) p.draw(ctx, cam);
   for (const n of G.npcs) if (Math.abs(n.x - cam - 200) < 230) n.draw(ctx, cam);
   for (const e of G.enemies) if (Math.abs(e.x - cam - 200) < 240) e.draw(ctx, cam);
   if (G.boss) G.boss.draw(ctx, cam);
+  drawCameo(cam, false);
   // 變暗（絕招／魔王出場）：放在主角與特效之前，讓主角與特效保持明亮
   if (G.dark > 0) { ctx.fillStyle = `rgba(10,0,20,${G.dark * 0.6})`; ctx.fillRect(0, 0, VW, VH); }
   if (window.VFX && !G.lowFx) VFX.draw(ctx, cam, 0, 'back');
@@ -998,18 +1083,26 @@ function drawGetAbility() {
   if (info.weapon) rows.push(['ui_w_' + info.weapon, WEAPONS[info.weapon].name, WEAPONS[info.weapon].color, WEAPONS[info.weapon].desc + '（S 鍵切換）']);
   for (const p of info.passives) rows.push(['ui_ab_' + p, ABILITIES[p].name, ABILITIES[p].color, ABILITIES[p].desc.join('')]);
   if (info.lvUp) rows.push([null, '水槍強化 Lv.' + (info.lv + 1), '#7fe6ff', '水柱變大、威力提升、可同時發射 ' + (3 + info.lv) + ' 發！']);
+  // 右側：能力清單（GPT 標題圖＋自動換行說明，不互相重疊）
+  let yy = 54;
   rows.forEach((r, i) => {
-    const y = 140 + i * 26 - (rows.length - 1) * 8, show = t > 30 + i * 20; if (!show) return;
-    const pop = Math.min(1, (t - 30 - i * 20) / 10);
-    if (!(r[0] && uiImg(r[0], 200, y, 150 * pop))) txt(r[1], 200, y - 8, 13, r[2], 'center');
-    txt(r[3], 200, y + 9, 7, '#fff', 'center');
+    if (t <= 30 + i * 20) return;
+    const pop = Math.min(1, (t - 30 - i * 20) / 10), bw = 150;
+    const im = r[0] && UI[r[0]]; let bh = 18;
+    if (im) { bh = bw * im.height / im.width; sctx.globalAlpha = pop; sctx.drawImage(im, 196 * K, yy * K, bw * K, bh * K); sctx.globalAlpha = 1; }
+    else txt(r[1], 200, yy + 2, 12, r[2], 'left');
+    const lines = wrap(r[3], 180, 7.5);
+    lines.slice(0, 3).forEach((l, j) => txt(l, 200, yy + bh + 2 + j * 10, 7.5, '#fff', 'left'));
+    yy += bh + 6 + Math.min(3, lines.length) * 10;
   });
-  if (SPR.has('h_win')) {
-    const s = SPR.f[(t >> 4) % 2 ? 'h_win' : 'h_charge'] || SPR.f.h_win, sc = 76 / s.h;
-    sctx.drawImage(s.img, (200 - s.w * sc / 2) * K, 52 * K, s.w * sc * K, 76 * K);
-    if ((t >> 3) % 2) { sctx.globalAlpha = 0.45; sctx.drawImage(s.white, (200 - s.w * sc / 2) * K, 52 * K, s.w * sc * K, 76 * K); sctx.globalAlpha = 1; }
-  } else { const img = PX.S[(t >> 3) % 2 ? 'heroW_win' : 'hero_win']; sctx.drawImage(img, (200 - 34) * K, 54 * K, 68 * K, 74 * K); }
-  if (t > 90 && (t >> 4) % 2) txt('按 Z 繼續', 200, 206, 9, '#ffe36a', 'center');
+  // 左側：小編開心跳躍歡呼
+  const ks = ['h_cheer', 'h_win', 'h_thumb'], key = ks[Math.floor(t / 24) % 3], s = SPR.f[key] || SPR.f.h_win;
+  if (s) {
+    const sc = 80 / 44, hop = Math.abs(Math.sin(t / 9)) * 14, x = 96, y = 176 - hop;
+    sctx.fillStyle = 'rgba(0,0,0,0.35)'; sctx.beginPath(); sctx.ellipse(x * K, 178 * K, (22 - hop * 0.6) * K, 4 * K, 0, 0, 7); sctx.fill();
+    sctx.drawImage(s.img, (x - s.ax * sc) * K, (y - s.h * sc) * K, s.w * sc * K, s.h * sc * K);
+    if ((t >> 3) % 2) { sctx.globalAlpha = 0.35; sctx.drawImage(s.white, (x - s.ax * sc) * K, (y - s.h * sc) * K, s.w * sc * K, s.h * sc * K); sctx.globalAlpha = 1; }
+  }  if (t > 90 && (t >> 4) % 2) txt('按 Z 繼續', 200, 206, 9, '#ffe36a', 'center');
 }
 function drawEnding() {
   sctx.fillStyle = '#000'; sctx.fillRect(0, 0, screen.width, screen.height);
@@ -1078,7 +1171,7 @@ function render() {
   const lbT = G.dialog || m === 'bossIntro' || m === 'gate' || m === 'absorb' || m === 'bossDown' ? 1 : 0;
   G.letterbox += (lbT - G.letterbox) * 0.15;
   if (G.letterbox > 0.01) { sctx.fillStyle = '#000'; sctx.fillRect(0, 0, screen.width, 16 * K * G.letterbox); sctx.fillRect(0, screen.height - 16 * K * G.letterbox, screen.width, 16 * K * G.letterbox); }
-  drawTexts();
+  drawTexts(); drawCameoSay(); drawHeroSay();
   if (m !== 'ultra' && G.letterbox < 0.5) { drawHUD(); drawTip(); }
   if (G.warnT > 0 && (G.warnT >> 3) % 2) { sctx.fillStyle = 'rgba(200,0,30,0.35)'; sctx.fillRect(0, 0, VW * K, VH * K); if (!uiImg('ui_warning', 200, 104, 300)) { sctx.fillStyle = 'rgba(200,0,30,0.75)'; sctx.fillRect(0, 90 * K, VW * K, 40 * K); txt('⚠ WARNING ⚠', 200, 96, 18, '#fff', 'center', '#600'); } txt(G.level.def.bossName + ' 出現！', 200, 136, 10, '#ffe', 'center', '#600'); }
   if (m === 'ready' && (G.readyT >> 3) % 2) { if (!uiImg('ui_ready', 200, 104, 130)) txt('READY', 200, 100, 20, '#fff', 'center'); }

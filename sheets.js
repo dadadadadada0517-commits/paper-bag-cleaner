@@ -11,13 +11,15 @@ const SPR = (() => {
     fx_aura: { tight: true, dir: 'art', rows: [['fx_aura']], h: [[74]] },
     fx_splash: { tight: true, dir: 'art', rows: [['sp0', 'sp1', 'sp2', 'sp3']], h: [[{ w: 26 }, { w: 34 }, { w: 40 }, { w: 40 }]] },
     cutin: { tight: true, rows: [['cutin']], h: [[150]] },
+    cameo_m: { tight: true, rows: [['cm_fly0', 'cm_fly1', 'cm_wave', 'cm_throw']], h: [[{ w: 46 }, { w: 46 }, 36, 36]] },
+    cameo_s: { tight: true, rows: [['cs_fly0', 'cs_fly1', 'cs_thumb', 'cs_throw']], h: [[{ w: 46 }, { w: 46 }, 40, 40]] },
     h4: { rows: [['n_idle', 'n_run0', 'n_run1', 'n_run2', 'n_shoot', 'n_jump']], h: 44 },
     h3: { rows: [['m_idle', 'm_step', 'm_run0', 'm_run1', 'm_run2'], ['m_shoot', 'm_rs0', 'm_rs1', 'm_rs2', 'm_jump', 'm_jshoot', 'm_hurt']], h: 44 },
     h2: { rows: [['h_climb0', 'h_climb1', 'h_hurt', 'h_stagger', 'h_kneel'], ['h_idle0', 'h_idle1', 'h_wave', 'h_thumb', 'h_cheer']], h: 44, ref: [1, 0] },
     witch: { rows: [['w_stand', ...R8('w_run')], ['w_ride0', 'w_ride1', 'w_ride2', 'w_ride3', 'w_sweep0', 'w_sweep1', 'w_sweep2', 'w_sweep3', 'w_cheer']], h: 46 },
     witch_hurt: { rows: [['w_hit', 'w_stagger', 'w_kneel']], h: 44, left: true },
-    abo: { rows: [['a_stand', ...R8('a_walk')], ['a_t0', 'a_t1', 'a_t2', 'a_j0', 'a_j1', 'a_sorry0', 'a_sorry1']], h: 44 },
-    lady: { rows: [['l_stand', ...R8('l_walk')], ['l_t0', 'l_t1', 'l_t2', 'l_j0', 'l_j1', 'l_j2', 'l_cry0', 'l_cry1']], h: 48 },
+    abo: { feet: /^a_(t|stand|sorry)/, rows: [['a_stand', ...R8('a_walk')], ['a_t0', 'a_t1', 'a_t2', 'a_j0', 'a_j1', 'a_sorry0', 'a_sorry1']], h: 44 },
+    lady: { feet: /^l_(t|stand|cry)/, rows: [['l_stand', ...R8('l_walk')], ['l_t0', 'l_t1', 'l_t2', 'l_j0', 'l_j1', 'l_j2', 'l_cry0', 'l_cry1']], h: 48 },
     king: { rows: [['k_idle0', 'k_idle1', 'k_roar0', 'k_roar1', 'k_j0', 'k_j1', 'k_j2', 'k_gas'], ['k_shrink', 'k_pup0', 'k_pup1', 'k_pup2']], h: 72 },
     dogs: { rows: [['d_stand', ...R8('d_walk')], ['d_bark0', 'd_bark1', 'd_lunge0', 'd_lunge1', 'd_poop0', 'd_poop1', 'd_happy0', 'd_happy1']], h: 20 },
     bigdog: { rows: [['b_sit', ...R8('b_run')], ['b_growl0', 'b_growl1', 'b_dizzy0', 'b_dizzy1', 'b_happy0', 'b_happy1']], h: 30 },
@@ -94,7 +96,8 @@ const SPR = (() => {
         const mids = [];
         for (let Y = ya; Y <= yb; Y++) { let l = -1, r = -1; for (let X = a; X <= b; X++) if (fg[Y * W + X]) { if (l < 0) l = X; r = X; } if (l >= 0) mids.push((l + r) / 2); }
         mids.sort((p, q) => p - q);
-        return { x0: a, x1: b, top, bot, cx: mids.length ? mids[mids.length >> 1] : (a + b) / 2 };
+        let fsx = 0, fn = 0; for (let Y = Math.floor(bot - (bot - top) * 0.12); Y <= bot; Y++) for (let X = a; X <= b; X++) if (fg[Y * W + X]) { fsx += X; fn++; }
+        return { x0: a, x1: b, top, bot, cx: mids.length ? mids[mids.length >> 1] : (a + b) / 2, fx: fn ? fsx / fn : (a + b) / 2 };
       });
       const base = Math.max(...frames.map(f => f.bot));
       frames.forEach((fr, i) => out.push({ ri, ci: i, name: names[i], ...fr, base: spec.tight ? fr.bot : base }));
@@ -124,7 +127,8 @@ const SPR = (() => {
       for (let k = 0; k < p.length; k += 4) { if (p[k + 3] < 120) p[k + 3] = 0; else { const a = p[k + 3] / 255; p[k] = Math.min(255, p[k] / a); p[k + 1] = Math.min(255, p[k + 1] / a); p[k + 2] = Math.min(255, p[k + 2] / a); p[k + 3] = 255; } }
       ox.putImageData(od, 0, 0);
       const wc = document.createElement('canvas'); wc.width = tw; wc.height = th; const wx = wc.getContext('2d'); wx.drawImage(oc, 0, 0); wx.globalCompositeOperation = 'source-atop'; wx.fillStyle = '#fff'; wx.fillRect(0, 0, tw, th);
-      let ax = (o.cx - o.x0) * sc; if (spec.left) ax = tw / RS - ax;
+      const useFeet = spec.feet && spec.feet.test(o.name || '');
+      let ax = ((useFeet ? o.fx : o.cx) - o.x0) * sc; if (spec.left) ax = tw / RS - ax;
       f[o.name] = { img: oc, white: wc, w: tw / RS, h: th / RS, ax: ax, fh: Math.round((o.bot - o.top + 1) * sc), top: Math.round((o.top - o.top) * sc) };
     }
   }
