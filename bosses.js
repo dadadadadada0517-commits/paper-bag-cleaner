@@ -205,7 +205,7 @@ class Boss {
       case 'meteor':
         fly(120); this.cast = 10;
         if (this.st === 1) { this.mx = clamp(P.cx, this.ax0 + 30, this.ax1 - 30); FX('warn', this.mx, this.floorY, { opts: { size: 2.2, warningDuration: 1 } }); floatText(this.cx, this.y - 10, '流星魔法！', '#ff8a8a', true); Audio8.sfx('siren'); }
-        if (this.st === 60) { FX('meteor', this.mx, this.floorY, { opts: { size: 0.6 } }); }
+        if (this.st === 40) { FX('meteor', this.mx, this.floorY, { opts: { size: 0.6 } }); }
         if (this.st === 78) { G.shake = 14; Audio8.sfx('explode'); G.flash = 4; if (Math.abs(P.cx - this.mx) < 40 && P.y + P.h > this.floorY - 30) P.hurt(4, this.mx, '流星直擊！'); }
         if (this.st > 110) this.next('idle'); break;
     }

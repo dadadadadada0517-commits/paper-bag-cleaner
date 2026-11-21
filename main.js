@@ -37,7 +37,7 @@ addEventListener('resize', resize); resize();
 
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg?v=11211353'; });
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = 'gpt-' + k + '.jpg?v=11211409'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
 // 去紫邊：只處理貼著透明區、而且「非常接近洋紅」的邊緣像素（不會吃掉粉紅、紫色的衣服頭髮）
@@ -57,17 +57,22 @@ function despill(p, W, H) {
 }
 function keyMagenta(img) {
   const c = PX.canvas(img.width, img.height), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0);
-  const im = x.getImageData(0, 0, c.width, c.height), p = im.data; let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
-  for (let i = 0; i < p.length; i += 4) {
-    const r = p[i], g = p[i + 1], b = p[i + 2];
-    if (p[i + 3] < 128 || (g < 110 && r > 150 && b > 150 && Math.abs(r - b) < 90)) p[i + 3] = 0;
-    else { const k = i / 4, X = k % c.width, Y = (k / c.width) | 0; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; }
+  const im = x.getImageData(0, 0, c.width, c.height), p = im.data, W = c.width, H = c.height; let x0 = W, y0 = H, x1 = 0, y1 = 0;
+  // 只去掉「跟外框連在一起」的洋紅底（灌水），裡面只去純洋紅 → 粉紅字、粉紅衣服不會被吃掉
+  const mag = i => { const r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2]; return p[i * 4 + 3] < 128 || (g < 110 && r > 150 && b > 150 && Math.abs(r - b) < 90); };
+  const pure = i => { const r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2]; return g < 60 && r > 205 && b > 205 && Math.abs(r - b) < 50; };
+  const bg = new Uint8Array(W * H), st = [];
+  for (let X = 0; X < W; X++) st.push(X, (H - 1) * W + X); for (let Y = 0; Y < H; Y++) st.push(Y * W, Y * W + W - 1);
+  while (st.length) { const i = st.pop(); if (bg[i] || !mag(i)) continue; bg[i] = 1; const X = i % W, Y = (i / W) | 0; if (X > 0) st.push(i - 1); if (X < W - 1) st.push(i + 1); if (Y > 0) st.push(i - W); if (Y < H - 1) st.push(i + W); }
+  for (let k = 0; k < W * H; k++) {
+    if (bg[k] || pure(k)) p[k * 4 + 3] = 0;
+    else { const X = k % W, Y = (k / W) | 0; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; }
   }
   despill(p, c.width, c.height);
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.webp?v=11211353'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.webp?v=11211409'; });
 // 宣導標語：解決狀況時在畫面上方滑入（每關每種只出現一次）
 const TIPS = {
   poop: '遛狗不撿狗便便，依《廢棄物清理法》\n可罰新台幣 1,200～6,000 元！',
@@ -99,10 +104,10 @@ const MIDIMG = {}, PITIMG = {}, SELHEAD = [];
   let segs = [], s = -1; col.forEach((v, i) => { if (v && s < 0) s = i; if (!v && s >= 0) { segs.push([s, i]); s = -1; } }); if (s >= 0) segs.push([s, c.width]);
   segs = segs.filter(g => g[1] - g[0] > c.width / 40).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 5).sort((a, b) => a[0] - b[0]);
   for (const [a, b] of segs) { let top = c.height, bot = 0; for (let j = 0; j < c.height; j++) for (let i = a; i < b; i += 2) if (d[(j * c.width + i) * 4 + 3] > 0) { if (j < top) top = j; bot = j; break; } const o = document.createElement('canvas'); o.width = b - a; o.height = bot - top + 1; o.getContext('2d').drawImage(c, a, top, b - a, bot - top + 1, 0, 0, b - a, bot - top + 1); SELHEAD.push(o); }
-} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11211353'; }
+} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11211409'; }
 [1, 2, 3, 4].forEach(n => {
-  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11211353';
-  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11211353';
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11211409';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11211409';
 });
 
 // ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
@@ -319,7 +324,7 @@ function loadLevel(n) {
   L.total = total; L.req = Math.ceil(total * 0.5);
   G.level = L; LV = L;
   G.player = new Player(start.x, start.y); G.start = start;
-  G.camX = 0; G.stage = n; G.time = 0; G.deathsStage = 0;
+  G.camX = 0; G.stage = n; G.time = 0; G.deathsStage = 0; G.killsStage = 0;
   syncAbilities(); G.refillAmmo(); G.weapon = 'water';
 }
 function updateYoku() {
@@ -396,7 +401,8 @@ G.onBossDefeated = (b) => {
     const before = { ...G.abilities }, lvBefore = G.gunLv;
     const firstClear = !save.cleared.includes(G.stage);
     if (firstClear) save.cleared.push(G.stage);
-    save.stats[G.stage] = { time: G.time, clean: G.clean, total: G.level.total, deaths: G.deathsStage || 0 };
+    { const old = save.stats[G.stage], st = { time: G.time, clean: G.clean, total: G.level.total, deaths: G.deathsStage || 0, kills: G.killsStage || 0 }; st.stars = stageStars(st);
+      save.stats[G.stage] = !old || (st.stars || 0) >= (old.stars || stageStars(old)) ? st : old; } // 保留最好的成績
     writeSave(); syncAbilities();
     const wkey = STAGE_WEAPON[G.stage];
     const newPassive = ['charge', 'djump', 'dash'].filter(k => G.abilities[k] && !before[k]);
@@ -425,9 +431,107 @@ function* endingSeq() {
   G.mode = 'ending'; G.endT = 0; Audio8.music('ending'); if (window.VFX) VFX.clear();
   yield 60;
   yield* talk(ENDING);
+  G.mode = 'slogan'; G.slT = 0; // 宣導標語
+  yield () => G.slT > 300 || (G.slT > 90 && G.input.pressed.ok);
   G.mode = 'credits'; G.credT = 0;
-  yield () => G.credT > 900 || (G.credT > 200 && G.input.pressed.ok);
-  goTitle();
+  yield () => G.credT > 1100 || (G.credT > 200 && G.input.pressed.ok);
+  openCert(); // 獎狀：輸入名字、下載
+}
+// ---------- 成績：星星與分數 ----------
+function stageStars(s) { if (!s) return 0; let n = 1; if (s.total && s.clean / s.total >= 0.9) n++; if (!s.deaths) n++; return n; }
+function stageScore(s) { if (!s) return 0; return Math.max(0, s.clean * 100 + (s.kills || 0) * 50 + stageStars(s) * 1000 + Math.max(0, 2000 - Math.floor((s.time || 0) / 60) * 5) - (s.deaths || 0) * 300); }
+function totals() {
+  const t = { stars: 0, score: 0, kills: 0, clean: 0, deaths: 0, time: 0 };
+  for (let n = 1; n <= 4; n++) { const s = save.stats[n]; if (!s) continue; t.stars += stageStars(s); t.score += stageScore(s); t.kills += s.kills || 0; t.clean += s.clean || 0; t.deaths += s.deaths || 0; t.time += s.time || 0; }
+  t.rank = t.stars >= 12 ? '傳說級清潔英雄' : t.stars >= 9 ? '金牌清潔英雄' : t.stars >= 6 ? '銀牌清潔英雄' : '清潔小尖兵';
+  return t;
+}
+const starStr = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+// ---------- 宣導標語 ----------
+function drawSlogan() {
+  const t = G.slT;
+  sctx.fillStyle = '#0d1a3a'; sctx.fillRect(0, 0, screen.width, screen.height);
+  sctx.save(); sctx.translate(200 * K, 112 * K); sctx.rotate(t * 0.003); sctx.fillStyle = 'rgba(255,214,92,0.10)';
+  for (let i = 0; i < 16; i++) { sctx.rotate(Math.PI / 8); sctx.beginPath(); sctx.moveTo(0, 0); sctx.lineTo(420 * K, -28 * K); sctx.lineTo(420 * K, 28 * K); sctx.fill(); }
+  sctx.restore();
+  for (let i = 0; i < 40; i++) { const x = (i * 37) % VW, y = ((i * 53 + t * (0.6 + (i % 4) * 0.2)) % 240) - 10; sctx.fillStyle = ['#ff5a5a', '#ffe36a', '#7ff3ff', '#7dffa0', '#ff9de2'][i % 5]; sctx.fillRect(x * K, y * K, 3 * K, 3 * K); }
+  const s0 = Math.min(1, t / 20);
+  if (uiImg('ui_slogan', 200, 104, 360 * (1.4 - 0.4 * s0), s0)) return;
+  SLOGANS.forEach((s, i) => { if (t < 20 + i * 25) return; const big = i === SLOGANS.length - 1; txt(s, 200, 50 + i * 34 + (big ? 6 : 0), big ? 20 : 16, big ? '#ffe36a' : '#ffffff', 'center', '#5a1d00'); });
+}
+// ---------- 獎狀 ----------
+let certName = '', certCv = null, certUI = null;
+function makeCert(name) {
+  const W = 1600, H = 1320, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const SERIF = '"BiauKai","DFKai-SB","標楷體","Kaiti TC","Noto Serif TC","PMingLiU",serif', SANS = '"PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif';
+  const T = totals(), today = new Date();
+  // 紙張
+  const pg = x.createRadialGradient(W / 2, H / 2, 100, W / 2, H / 2, 950); pg.addColorStop(0, '#fffdf3'); pg.addColorStop(1, '#f5e6c4'); x.fillStyle = pg; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 2500; i++) { x.fillStyle = `rgba(150,110,40,${(i % 7) / 160})`; x.fillRect((i * 7919) % W, (i * 104729) % H, 2, 2); }
+  // 外框：金＋紅雙框、四角星飾
+  x.strokeStyle = '#c9a227'; x.lineWidth = 22; x.strokeRect(34, 34, W - 68, H - 68);
+  x.strokeStyle = '#b3262e'; x.lineWidth = 6; x.strokeRect(62, 62, W - 124, H - 124);
+  x.strokeStyle = '#c9a227'; x.lineWidth = 2; x.strokeRect(74, 74, W - 148, H - 148);
+  const star = (cx, cy, r, col) => { x.fillStyle = col; x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.closePath(); x.fill(); };
+  for (const [cx, cy] of [[62, 62], [W - 62, 62], [62, H - 62], [W - 62, H - 62]]) { x.fillStyle = '#b3262e'; x.beginPath(); x.arc(cx, cy, 34, 0, 7); x.fill(); star(cx, cy, 26, '#ffd65c'); }
+  // 標誌＋標題
+  const lg = UI.ui_logo; if (lg) { const w = 400, h = w * lg.height / lg.width; x.drawImage(lg, W / 2 - w / 2, 92, w, h); }
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.font = `900 140px ${SERIF}`; x.lineWidth = 10; x.strokeStyle = '#f3d36b'; x.strokeText('獎　狀', W / 2, 330); x.fillStyle = '#b3262e'; x.fillText('獎　狀', W / 2, 330);
+  // 內文
+  x.fillStyle = '#3a2410'; x.font = `700 44px ${SERIF}`; x.textAlign = 'left'; x.fillText('茲證明', 190, 445);
+  x.textAlign = 'center'; x.font = `900 84px ${SERIF}`; x.fillStyle = '#1a2a6c'; x.fillText(name || '清潔英雄', W / 2, 445);
+  x.fillStyle = '#c9a227'; x.fillRect(W / 2 - 330, 495, 660, 5);
+  x.fillStyle = '#3a2410'; x.font = `700 42px ${SERIF}`;
+  x.fillText('在《小編出擊！》中奮勇作戰，打倒四大魔王，', W / 2, 560);
+  x.fillText('讓全城恢復乾淨，表現傑出，特頒此狀，以資表揚。', W / 2, 618);
+  x.font = `900 46px ${SERIF}`; x.fillStyle = '#b3262e'; x.fillText('榮獲稱號：「' + T.rank + '」', W / 2, 686);
+  // 成績表
+  const bx = 200, by = 730, bw = W - 400, rh = 46;
+  x.fillStyle = 'rgba(255,255,255,0.65)'; x.fillRect(bx, by, bw, rh * 6 + 10); x.strokeStyle = '#c9a227'; x.lineWidth = 3; x.strokeRect(bx, by, bw, rh * 6 + 10);
+  const cols = [bx + 40, bx + 420, bx + 640, bx + 880, bx + 1080];
+  x.font = `700 28px ${SANS}`; x.fillStyle = '#7a5a20'; x.textAlign = 'left';
+  ['關卡', '星星', '清潔', '擊潰', '分數'].forEach((h, i) => x.fillText(h, cols[i], by + 28));
+  x.font = `600 28px ${SANS}`;
+  for (let n = 1; n <= 4; n++) { const s = save.stats[n], y = by + 28 + rh * n, D = LEVEL_DATA[n - 1];
+    x.fillStyle = '#3a2410'; x.fillText((n < 4 ? '第' + '一二三'[n - 1] + '關 ' : '最終關 ') + D.name, cols[0], y);
+    x.fillStyle = '#e0a800'; x.font = `700 30px ${SANS}`; x.fillText(s ? starStr(stageStars(s)) : '☆☆☆', cols[1], y); x.font = `600 28px ${SANS}`;
+    x.fillStyle = '#3a2410'; x.fillText(s ? (s.total ? Math.round(s.clean / s.total * 100) : 100) + '%' : '—', cols[2], y); x.fillText(s ? (s.kills || 0) + ' 隻' : '—', cols[3], y); x.fillText(s ? stageScore(s).toLocaleString() : '—', cols[4], y); }
+  x.fillStyle = '#b3262e'; x.font = `900 30px ${SANS}`; const ty = by + 28 + rh * 5;
+  x.fillText('總計', cols[0], ty); x.fillText('★ ' + T.stars + ' / 12', cols[1], ty); x.fillText('倒下 ' + T.deaths + ' 次', cols[2], ty); x.fillText(T.kills + ' 隻', cols[3], ty); x.fillText(T.score.toLocaleString(), cols[4], ty);
+  // 左下小編、右下印章、日期
+  const ph = IMG.p_hero; if (ph) { x.save(); x.beginPath(); x.arc(205, H - 175, 78, 0, 7); x.clip(); x.drawImage(ph, 127, H - 253, 156, 156 * ph.height / ph.width); x.restore(); x.strokeStyle = '#c9a227'; x.lineWidth = 6; x.beginPath(); x.arc(205, H - 175, 78, 0, 7); x.stroke(); }
+  x.save(); x.translate(W - 230, H - 180); x.rotate(-0.12); x.strokeStyle = 'rgba(200,30,40,0.85)'; x.lineWidth = 8; x.beginPath(); x.arc(0, 0, 82, 0, 7); x.stroke(); x.lineWidth = 3; x.beginPath(); x.arc(0, 0, 68, 0, 7); x.stroke();
+  x.fillStyle = 'rgba(200,30,40,0.85)'; x.textAlign = 'center'; x.font = `900 34px ${SERIF}`; x.fillText('清潔', 0, -20); x.fillText('認證', 0, 24); star(0, -58, 9, 'rgba(200,30,40,0.85)'); x.restore();
+  x.fillStyle = '#3a2410'; x.textAlign = 'center'; x.font = `700 34px ${SERIF}`;
+  x.fillText('小編出擊！清潔大隊 敬贈', W / 2, H - 190);
+  x.fillText('中華民國 ' + (today.getFullYear() - 1911) + ' 年 ' + (today.getMonth() + 1) + ' 月 ' + today.getDate() + ' 日', W / 2, H - 135);
+  return c;
+}
+function openCert() {
+  G.mode = 'cert'; try { certName = localStorage.getItem('pbh_name') || ''; } catch (e) {}
+  certCv = makeCert(certName);
+  if (certUI) certUI.remove();
+  const d = certUI = document.createElement('div');
+  d.style.cssText = 'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:20;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:rgba(8,12,24,.85);border:3px solid #ffd65c;border-radius:14px;padding:8px 12px;font:700 16px "PingFang TC","Microsoft JhengHei",sans-serif;color:#fff;touch-action:manipulation';
+  d.innerHTML = '<span>你的名字：</span><input id="cName" maxlength="12" placeholder="輸入名字" style="font:700 18px sans-serif;width:150px;padding:6px 8px;border-radius:8px;border:2px solid #ffd65c;touch-action:manipulation">' +
+    '<button id="cMake" style="font:700 16px sans-serif;padding:8px 12px;border-radius:8px;border:0;background:#7dffa0;touch-action:manipulation">寫上名字</button>' +
+    '<button id="cSave" style="font:700 16px sans-serif;padding:8px 12px;border-radius:8px;border:0;background:#ffd65c;touch-action:manipulation">下載獎狀</button>' +
+    '<button id="cBack" style="font:700 16px sans-serif;padding:8px 12px;border-radius:8px;border:0;background:#cfd6e6;touch-action:manipulation">回標題</button>' +
+    '<small style="width:100%;text-align:center;color:#ffe9a8;font-weight:500">也可以直接截圖保存喔！</small>';
+  document.body.appendChild(d);
+  const inp = d.querySelector('#cName'); inp.value = certName;
+  ['touchstart', 'touchend', 'pointerdown'].forEach(n => d.addEventListener(n, e => e.stopPropagation(), { passive: true }));
+  inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') d.querySelector('#cMake').click(); });
+  d.querySelector('#cMake').onclick = () => { certName = inp.value.trim(); try { localStorage.setItem('pbh_name', certName); } catch (e) {} certCv = makeCert(certName); Audio8.sfx('select'); inp.blur(); };
+  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11211409'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
+  d.querySelector('#cBack').onclick = () => { d.remove(); certUI = null; goTitle(); };
+}
+function drawCertScreen() {
+  sctx.fillStyle = '#1b2440'; sctx.fillRect(0, 0, screen.width, screen.height);
+  if (!certCv) return;
+  const s = Math.min(screen.width / certCv.width, (screen.height - 52 * K) / certCv.height) * 0.98, w = certCv.width * s, h = certCv.height * s; // 底下留位置給名字輸入框
+  sctx.imageSmoothingEnabled = true; sctx.drawImage(certCv, (screen.width - w) / 2, 4 * K, w, h); sctx.imageSmoothingEnabled = false;
 }
 function respawn() {
   const L = G.level, P = G.player;
@@ -566,6 +670,7 @@ function update() {
       worldUpdate(true); break;
     case 'getAbility': G.getT++; break;
     case 'ending': G.endT++; break;
+    case 'slogan': G.slT++; G.endT++; break;
     case 'credits': G.credT++; break;
   }
 }
@@ -763,7 +868,8 @@ function drawTiles() {
   for (let tx = x0 - 1; tx <= x1; tx++) {
     if (!pitAt(tx) || pitAt(tx - 1) && tx > x0 - 1) continue;
     let e = tx; while (pitAt(e + 1)) e++;
-    const x = tx * TS - cam, w = (e - tx + 1) * TS, top = 11 * TS - 4, pi = PITIMG[th];
+    let s0 = tx; while (pitAt(s0 - 1)) s0--; // 用整個斷層的真正寬度，捲動時圖不會被擠壓變形
+    const x = s0 * TS - cam, w = (e - s0 + 1) * TS, top = 11 * TS - 4, pi = PITIMG[th];
     if (pi) { const pad = 8; ctx.fillStyle = '#050307'; ctx.fillRect(x, top + 6, w, VH - top); ctx.drawImage(pi, x - pad, top, w + pad * 2, VH - top + 4); }
     else { const gr = ctx.createLinearGradient(0, top, 0, VH); gr.addColorStop(0, pitTop[0]); gr.addColorStop(0.35, pitTop[1]); gr.addColorStop(1, '#000'); ctx.fillStyle = gr; ctx.fillRect(x, top, w, VH - top); }
     if (th === 3) { ctx.fillStyle = 'rgba(120,210,60,0.45)'; ctx.fillRect(x, VH - 10 + Math.sin((G.t + tx * 9) / 14) * 1.5, w, 10); }
@@ -867,7 +973,29 @@ function drawWorld() {
       continue; }
     if (p.cloud) { const k = 1 - p.life / p.max, r = p.r0 + (p.r1 - p.r0) * Math.sqrt(k); ctx.globalAlpha = Math.min(1, (1 - k) * 1.4) * 0.85; ctx.beginPath(); ctx.arc(Math.round(p.x - cam), Math.round(p.y), r, 0, 7); ctx.fill(); continue; }
     if (p.ring) { const k = 1 - p.life / p.max, r = p.r0 + (p.r1 - p.r0) * k; ctx.globalAlpha = 1 - k; ctx.strokeStyle = p.c; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x - cam, p.y, r, r * p.flat, 0, 0, 7); ctx.stroke(); continue; }
-    if (p.warn) { ctx.globalAlpha = (p.life % 10 < 5) ? 0.8 : 0.35; ctx.strokeStyle = p.c; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x - cam, p.y - 2, p.r0, p.r0 * 0.3, 0, 0, 7); ctx.stroke(); ctx.globalAlpha *= 0.4; ctx.fill(); continue; }
+    if (p.warn) { // 洛克人式鎖定標記：四角括號往中間收、紅色倒三角跳動、天上掉下來的虛線
+      const X = Math.round(p.x - cam), Y = Math.round(p.y), t = 1 - p.life / p.max, blink = p.life % 8 < 4;
+      const r = Math.round(p.r0 * (1.7 - 0.7 * Math.min(1, t * 3))), ry = Math.max(4, Math.round(r * 0.35)), L = Math.max(4, Math.round(r * 0.4));
+      const col = blink ? '#ff3b3b' : '#ffe36a';
+      ctx.globalAlpha = 0.22; ctx.fillStyle = col; for (let yy = 0; yy < Y - 10; yy += 8) ctx.fillRect(X, yy, 1, 4);
+      ctx.globalAlpha = 0.25; ctx.fillStyle = '#ff3b3b'; ctx.fillRect(X - r, Y - 1, r * 2, 2);
+      ctx.globalAlpha = 1;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const cx = X + sx * r, cy = Y - 2 + sy * ry;
+        ctx.fillStyle = '#16111f'; ctx.fillRect(cx - (sx > 0 ? L : 0) - 1, cy - 2, L + 2, 4); ctx.fillRect(cx - 2, cy - (sy > 0 ? L * 0.6 : 0) - 1, 4, L * 0.6 + 2);
+        ctx.fillStyle = col; ctx.fillRect(cx - (sx > 0 ? L : 0), cy - 1, L, 2); ctx.fillRect(cx - 1, cy - (sy > 0 ? L * 0.6 : 0), 2, L * 0.6);
+      }
+      const by = Y - ry - 14 - Math.abs(Math.sin(G.t / 5)) * 4;
+      ctx.fillStyle = '#16111f'; ctx.beginPath(); ctx.moveTo(X - 6, by - 1); ctx.lineTo(X + 6, by - 1); ctx.lineTo(X, by + 8); ctx.fill();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(X - 4, by); ctx.lineTo(X + 4, by); ctx.lineTo(X, by + 6); ctx.fill();
+      continue; }
+    if (p.meteor) { // 流星：橘紅火球＋拖尾，加速落下
+      const t = 1 - p.life / p.max, e = t * t, sx = p.x - cam + (1 - e) * 60, sy = -30 + (p.y + 30) * e, R = 7 * p.k;
+      for (let i = 6; i >= 1; i--) { ctx.globalAlpha = 0.12 * (7 - i); ctx.fillStyle = i % 2 ? '#ff7a24' : '#ffd23f'; const tx = sx + i * 6, ty = sy - i * 9; ctx.beginPath(); ctx.arc(tx, ty, R * (1 - i * 0.1), 0, 7); ctx.fill(); }
+      ctx.globalAlpha = 1; ctx.fillStyle = '#16111f'; ctx.beginPath(); ctx.arc(sx, sy, R + 2, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ff5a1f'; ctx.beginPath(); ctx.arc(sx, sy, R, 0, 7); ctx.fill(); ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(sx - R * 0.25, sy - R * 0.25, R * 0.6, 0, 7); ctx.fill(); ctx.fillStyle = '#fff8d0'; ctx.fillRect(Math.round(sx - R * 0.45), Math.round(sy - R * 0.45), 3, 3);
+      if (p.life === 1) { FX('explode', p.x, p.y - 6, { opts: { size: 1.1 } }); FX('shock', p.x, p.y, { opts: { size: 1 } }); }
+      continue; }
     if (p.dot) { ctx.globalAlpha = Math.min(1, p.life / 6); ctx.fillStyle = p.c; ctx.fillRect(p.x - cam - 1.5, p.y - 0.5, 3, 1); ctx.fillRect(p.x - cam - 0.5, p.y - 1.5, 1, 3); ctx.globalAlpha *= 0.35; ctx.fillRect(p.x - cam - 2, p.y - 2, 4, 4); continue; }
     ctx.fillRect(Math.round(p.x - cam - s / 2), Math.round(p.y - s / 2), Math.ceil(s), Math.ceil(s));
   }
@@ -1193,24 +1321,37 @@ function drawSelect() {
 }
 function drawEnding() {
   sctx.fillStyle = '#000'; sctx.fillRect(0, 0, screen.width, screen.height);
-  // 用第一關早晨背景＋所有人排排站
-  const im = IMG.bg1;
+  // 勝利慶祝：晴朗的第一關背景＋旋轉光芒＋煙火＋彩帶＋大家排排站跳
+  const im = IMG.bg1, T = G.endT || G.t;
   const g = sctx.createLinearGradient(0, 0, 0, VH * K); g.addColorStop(0, '#ffb36a'); g.addColorStop(1, '#ffe8c0'); sctx.fillStyle = g; sctx.fillRect(0, 0, VW * K, VH * K);
-  if (im) { sctx.globalAlpha = 0.8; sctx.drawImage(im, 0, -14 * K, (im.width * 250 / im.height) * K, 250 * K); sctx.globalAlpha = 1; }
+  if (im) { sctx.drawImage(im, 0, -14 * K, (im.width * 250 / im.height) * K, 250 * K); }
+  sctx.save(); sctx.translate(200 * K, 52 * K); sctx.rotate(T * 0.004); sctx.fillStyle = 'rgba(255,240,170,0.16)';
+  for (let i = 0; i < 14; i++) { sctx.rotate(Math.PI / 7); sctx.beginPath(); sctx.moveTo(0, 0); sctx.lineTo(420 * K, -34 * K); sctx.lineTo(420 * K, 34 * K); sctx.fill(); }
+  sctx.restore();
+  // 煙火：每 40 格在天空隨機位置炸開
+  for (let f = 0; f < 3; f++) { const ft = (T + f * 23) % 70, seed = Math.floor((T + f * 23) / 70) * 7 + f * 13, fx = 40 + (seed * 53 % 320), fy = 20 + (seed * 31 % 50), cols = ['#ff5a5a', '#ffe36a', '#7ff3ff', '#7dffa0', '#ff9de2'], c = cols[seed % 5];
+    if (ft < 45) { const r = 4 + ft * 0.9; sctx.globalAlpha = 1 - ft / 45; sctx.fillStyle = c; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; sctx.fillRect((fx + Math.cos(a) * r) * K, (fy + Math.sin(a) * r + ft * 0.08) * K, 2 * K, 2 * K); sctx.fillRect((fx + Math.cos(a) * r * 0.6) * K, (fy + Math.sin(a) * r * 0.6) * K, K, K); } sctx.globalAlpha = 1; } }
+  // 彩帶
+  for (let i = 0; i < 46; i++) { const x = (i * 37 + Math.sin((T + i * 17) / 20) * 10) % VW, y = ((i * 53 + T * (0.5 + (i % 4) * 0.2)) % 240) - 10, w = (Math.sin((T + i * 9) / 6) > 0 ? 3 : 1.5); sctx.fillStyle = ['#ff5a5a', '#ffe36a', '#7ff3ff', '#7dffa0', '#ff9de2', '#ffffff'][i % 6]; sctx.fillRect(x * K, y * K, w * K, 3 * K); }
   sctx.fillStyle = '#5cc85a'; sctx.fillRect(0, 160 * K, VW * K, 4 * K); sctx.fillStyle = '#a8743f'; sctx.fillRect(0, 164 * K, VW * K, 61 * K);
   const S = PX.S, row = [['chief' + ((G.t >> 5) % 2), 60], ['kid' + ((G.t >> 5) % 2), 100], ['aboUp', 140], ['ladyUp', 182], ['dogKhappy', 228], ['witchS', 280], [(G.t >> 4) % 2 ? 'hero_win' : 'hero_stand', 330]];
-  const row2 = [['chief' + ((G.t >> 5) % 2 ? 3 : 0), 50], ['kid' + ((G.t >> 5) % 2 ? 2 : 3), 92], ['a_sorry' + ((G.t >> 5) % 2), 135], ['l_cry' + ((G.t >> 5) % 2), 182], ['k_pup2', 228], [(G.t >> 5) % 2 ? 'w_cheer' : 'w_stand', 280], [(G.t >> 5) % 2 ? 'h_thumb' : 'h_cheer', 335]];
-  if (SPR.has('h_thumb')) { for (const [k, x] of row2) { const s = SPR.f[k]; if (!s) continue; const hop = Math.abs(Math.sin((G.t + x) / 12)) * 4; sctx.drawImage(s.img, (x - s.w / 2) * K, (161 - s.h - hop) * K, s.w * K, s.h * K); } row.length = 0; }
+  const row2 = [['chief0', 50], ['kid3', 92], ['a_stand', 135], ['l_stand', 182], ['k_pup2', 228], ['w_stand', 280], [(G.t >> 5) % 2 ? 'h_thumb' : 'h_cheer', 335]];
+  // 說話的人頭上出現黃色▼（不再全員一直跳）
+  const who = G.dialog && G.dialog.who, wx = { chief: 50, kid: 92, abo: 135, lady: 182, dogking: 228, witch: 280, hero: 335 }[who];
+  if (wx) { const by = 108 + Math.abs(Math.sin(G.t / 6)) * 4; sctx.fillStyle = '#16111f'; sctx.beginPath(); sctx.moveTo((wx - 7) * K, (by - 1) * K); sctx.lineTo((wx + 7) * K, (by - 1) * K); sctx.lineTo(wx * K, (by + 9) * K); sctx.fill(); sctx.fillStyle = '#ffe36a'; sctx.beginPath(); sctx.moveTo((wx - 5) * K, by * K); sctx.lineTo((wx + 5) * K, by * K); sctx.lineTo(wx * K, (by + 7) * K); sctx.fill(); }
+  if (SPR.has('h_thumb')) { for (const [k, x] of row2) { const s = SPR.f[k]; if (!s) continue; const hop = x === wx ? Math.abs(Math.sin(G.t / 8)) * 3 : 0; sctx.drawImage(s.img, (x - s.w / 2) * K, (161 - s.h - hop) * K, s.w * K, s.h * K); } row.length = 0; }
   for (const [k, x] of row) { const im2 = S[k]; if (!im2) continue; const hop = Math.abs(Math.sin((G.t + x) / 12)) * 4; sctx.drawImage(im2, (x - im2.width / 2) * K, (160 - im2.height - hop) * K, im2.width * K, im2.height * K); }
-  txt('全城恢復乾淨了！', 200, 20, 16, '#fff', 'center');
+  { const s0 = Math.min(1, T / 18), sc = s0 < 1 ? 1.6 - 0.6 * s0 : 1 + Math.sin(T / 14) * 0.03; // GPT 勝利標題圖：彈出後輕輕跳動
+    if (!uiImg('ui_win', 200, 46 + Math.sin(T / 20) * 2, 270 * sc, s0)) txt('全城恢復乾淨了！', 200, 20, 16, '#fff', 'center'); }
 }
 function drawCredits() {
   sctx.fillStyle = '#05060c'; sctx.fillRect(0, 0, screen.width, screen.height);
   const t = G.credT, y0 = 230 - t * 0.35;
   const tt = Object.values(save.stats).reduce((a, s) => a + (s.time || 0), 0);
   const cl = Object.values(save.stats).reduce((a, s) => a + (s.clean || 0), 0);
-  const L = ['小編出擊！', '', '— STAFF —', '主角　小編（紙袋大叔）', '最終魔王　豪鬼主任', '', '美術　GPT 生圖＋程式像素繪製', '特效　自製像素特效', '音樂　Suno　音效　ElevenLabs', '', '— 你的成績 —', `總遊玩時間　${Math.floor(tt / 3600)} 分 ${Math.floor(tt / 60) % 60} 秒`, `清掃數量　${cl}`, `馴服狗狗　${G.tamed} 隻`, `倒下次數　${G.deaths}`, '', '遛狗請牽繩，便便請撿走！', '', 'THE END'];
-  L.forEach((l, i) => { const y = y0 + i * 20; if (i === 0 && uiImg('ui_logo', 200, y + 10, 200)) return; if (l === 'THE END' && uiImg('ui_end', 200, y + 20, 220)) return; txt(l, 200, y, i === 0 ? 20 : l === 'THE END' ? 22 : 10, i === 0 || l === 'THE END' ? '#ffe36a' : '#fff', 'center'); });
+  const T = totals(), stg = [1, 2, 3, 4].map(n => { const s = save.stats[n], D = LEVEL_DATA[n - 1]; return (n < 4 ? '第' + '一二三'[n - 1] + '關' : '最終關') + '　' + D.name + '　' + (s ? starStr(stageStars(s)) + '　' + stageScore(s).toLocaleString() + ' 分' : '☆☆☆'); });
+  const L = ['小編出擊！', '', '— 演出 —', '主角　小編', '熱心居民　小學生', '遛狗不撿阿伯　名牌貴婦　狗魔王', '最終魔王　豪鬼主任', '中央山脈超人　針筒超人', '', '— 你的成績 —', ...stg, '', `總星數　★ ${T.stars} / 12`, `清潔分數　${T.score.toLocaleString()} 分`, `擊潰敵人　${T.kills} 隻`, `清掃數量　${cl}`, `倒下次數　${T.deaths} 次`, `總遊玩時間　${Math.floor(tt / 3600)} 分 ${Math.floor(tt / 60) % 60} 秒`, `稱號　${T.rank}`, '', '遛狗請牽繩，便便請撿走！', '', 'THE END'];
+  L.forEach((l, i) => { const y = y0 + i * 20; if (i === 0 && uiImg('ui_logo', 200, y + 10, 200)) return; if (l === 'THE END' && uiImg('ui_win', 200, y + 20, 240)) return; txt(l, 200, y, i === 0 ? 20 : l === 'THE END' ? 22 : 10, i === 0 || l === 'THE END' ? '#ffe36a' : '#fff', 'center'); });
 }
 function drawPause() {
   sctx.fillStyle = 'rgba(0,0,0,0.6)'; sctx.fillRect(0, 0, screen.width, screen.height);
@@ -1231,6 +1372,8 @@ function render() {
   if (m === 'stageCard') return drawStageCard();
   if (m === 'getAbility') return drawGetAbility();
   if (m === 'credits') return drawCredits();
+  if (m === 'slogan') return drawSlogan();
+  if (m === 'cert') return drawCertScreen();
   if (m === 'ending' || m === 'story') {
     if (m === 'ending') drawEnding();
     else { sctx.fillStyle = '#0b0d1e'; sctx.fillRect(0, 0, screen.width, screen.height); const im = IMG.bg1; if (im) { sctx.globalAlpha = 0.55; sctx.drawImage(im, 0, -14 * K, im.width * 250 / im.height * K, 250 * K); sctx.globalAlpha = 1; } txt('序章', 200, 20, 18, '#ffe36a', 'center'); txt('某個城市的社區，最近到處都是狗大便……', 200, 50, 10, '#fff', 'center'); }

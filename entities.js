@@ -37,7 +37,9 @@ function FX(name, x, y, o = {}) {
       if (name === 'shock') ring(x, y, 4, 30 * k, 18, '#f4e6c8', 0.25);
       return null;
     case 'warn':
-      G.parts.push({ x, y, vx: 0, vy: 0, life: 70, max: 70, c: '#ff303e', s: 1, g: 0, warn: true, r0: 22 * k }); return null;
+      G.parts.push({ x, y, vx: 0, vy: 0, life: 70, max: 70, c: '#ff303e', s: 1, g: 0, warn: true, r0: clamp(14 * k, 14, 38) }); return null;
+    case 'meteor': // 自繪像素流星：從天而降，落地爆炸
+      G.parts.push({ x, y, vx: 0, vy: 0, life: 38, max: 38, c: '#ff7a24', s: 1, g: 0, meteor: true, k: Math.max(1.6, k) }); return null;
     case 'thunder': case 'zap':
       cloud(x, y, 0, 0, 3, 12 * k, 8, '#fff6c0'); sparks(x, y, col, 12, 3, 0); return null;
     case 'hole': case 'gate':
@@ -619,6 +621,7 @@ class Enemy {
     return true;
   }
   defeat() {
+    G.killsStage = (G.killsStage || 0) + 1; // 擊潰次數（結算、獎狀用）
     const isDog = this.code === 'd' || this.code === 'D';
     G.score += 100;
     if (isDog) { this.state = 'tamed'; this.st = 0; this.face = G.player.cx < this.cx ? 1 : -1; Audio8.sfx('tame'); floatText(this.cx, this.y - 8, '冷靜下來了～♥', '#ff9fc8'); G.tip('dog'); FX('heal', this.cx, this.y + this.h, { opts: { size: 0.4 } }); G.tamed++; return; }
