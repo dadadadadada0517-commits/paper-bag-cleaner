@@ -50,7 +50,7 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.png'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero'].forEach(k => { const im = new Image(); im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} }; im.src = 'ui-' + k + '.png'; });
 // 宣導標語：解決狀況時在畫面上方滑入（每關每種只出現一次）
 const TIPS = {
   poop: '遛狗不撿狗便便，依《廢棄物清理法》\n可罰新台幣 1,200～6,000 元！',
@@ -122,7 +122,7 @@ function drawCameo(cam, back) {
   const k = back ? 0.7 : 1;
   ctx.save(); ctx.translate(Math.round(c.x - cam), Math.round(c.y)); ctx.scale(c.dir * k, k); if (back) ctx.globalAlpha = 0.92;
   ctx.drawImage(s.img, -s.ax, -s.h / 2, s.w, s.h); ctx.restore();
-  if (c.sayT > 0) G.cameoSay = { x: c.x, y: c.y - s.h * k / 2 - 6, text: C.name + '：' + c.say };
+  if (c.sayT > 0) G.cameoSay = { x: c.x, top: c.y - s.h * k / 2, bot: c.y + s.h * k / 2, text: C.name + '：' + c.say };
   else G.cameoSay = null;
 }
 // 小編行進中自言自語（配合場景）
@@ -141,20 +141,28 @@ function updateMumble() {
 }
 function drawHeroSay() {
   const s = G.heroSay; if (!s || !G.zc || G.dialog) return;
-  const P = G.player, [x, y] = worldToScreen(P.cx, P.y - 18);
-  sctx.font = `${Math.round(7 * K)}px Cubic11, "Microsoft JhengHei", sans-serif`;
-  const w = sctx.measureText(s.text).width / K + 10, bx = Math.max(4, Math.min(VW - w - 4, x - w / 2)), by = Math.max(46, y - 12);
+  const P = G.player, [x, y] = worldToScreen(P.cx, P.y - 16);
   sctx.globalAlpha = Math.min(1, s.t / 15);
-  box(bx, by, w, 13, '#ffffff', '#16111f'); txt(s.text, bx + w / 2, by + 3, 7, '#16111f', 'center', null);
-  sctx.fillStyle = '#16111f'; sctx.fillRect((x - 1) * K, (by + 13) * K, 3 * K, 3 * K);
+  drawBubble('ui_bubble', x, Math.max(44, y - 22), s.text, '#16233a', '#16111f');
   sctx.globalAlpha = 1;
+}
+// GPT 對話泡泡（沒有圖時用簡單框）
+function drawBubble(imgKey, cx, topY, text, color, fallbackBorder) {
+  sctx.font = `${Math.round(7 * K)}px Cubic11, "Microsoft JhengHei", sans-serif`;
+  const tw = sctx.measureText(text).width / K, w = tw + 22, h = 21;
+  const bx = Math.max(4, Math.min(VW - w - 4, cx - w / 2));
+  const im = UI[imgKey];
+  if (im) sctx.drawImage(im, bx * K, topY * K, w * K, h * K);
+  else box(bx, topY, w, 14, '#ffffff', fallbackBorder);
+  txt(text, bx + w / 2, topY + (im ? 5.5 : 3), 7, color, 'center', null);
+  return h;
 }
 function drawCameoSay() {
   const b = G.cameoSay; if (!b || !G.zc) return;
-  const [x, y] = worldToScreen(b.x, b.y);
-  sctx.font = `${Math.round(7 * K)}px Cubic11, "Microsoft JhengHei", sans-serif`;
-  const w = sctx.measureText(b.text).width / K + 10, bx = Math.max(4, Math.min(VW - w - 4, x - w / 2)), by = Math.max(46, y - 14);
-  box(bx, by, w, 13, '#fffdf2', '#2f9e8a'); txt(b.text, bx + w / 2, by + 3, 7, '#2a1a10', 'center', null);
+  const [x, ty] = worldToScreen(b.x, b.top), [, by] = worldToScreen(b.x, b.bot);
+  // 上方放得下就放上方，否則放到超人下方，避免擋住他
+  const above = ty - 24 >= 44;
+  drawBubble('ui_bubble_hero', x, above ? ty - 24 : by + 3, b.text, '#5a1010', '#d23a3a');
 }
 // 在畫面座標（遊戲單位）置中畫一張 UI 圖，寬度 w
 function uiImg(k, cx, cy, w, alpha = 1) { const c = UI[k]; if (!c) return false; const h = w * c.height / c.width; sctx.globalAlpha = alpha; sctx.drawImage(c, (cx - w / 2) * K, (cy - h / 2) * K, w * K, h * K); sctx.globalAlpha = 1; return true; }

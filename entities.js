@@ -284,7 +284,7 @@ class Bullet {
     const sz = [[8, 6], [14, 10], [22, 16]][lvl];
     this.w = Math.round(sz[0] * k); this.h = Math.round(sz[1] * k); this.x = x - this.w / 2; this.y = y - this.h / 2;
     this.vx = dir * (lvl ? 5 : 4.5 + gl * 0.3); this.dmg = [2, 4, 7][lvl] + (gl >= 2 ? 1 : 0) + (gl >= 3 && lvl ? 1 : 0); this.pierce = lvl === 2; this.hitSet = new Set(); this.t = 0;
-    this.fx = lvl ? FX('bolt', this.x + this.w / 2, this.y + this.h / 2, { follow: this, dir, opts: { size: lvl === 2 ? 0.75 : 0.5 } }) : null;
+    this.fx = null; // 集氣砲只用 GPT 水球圖，不加 3D 拖尾
   }
   get cx() { return this.x + this.w / 2; }
   update() {
@@ -292,7 +292,6 @@ class Bullet {
     if (this.fx) { this.fx.wx = this.cx; this.fx.wy = this.y + this.h / 2; }
     const sx = this.x - G.camX;
     if (sx < -40 || sx > VW + 40) this.kill(false);
-    if (this.t % 3 === 0) G.parts.push({ x: this.cx - this.dir * 4, y: this.y + this.h / 2 + rnd(-2, 2), vx: -this.dir * 0.3, vy: rnd(0, 0.6), life: 12, max: 12, c: '#bff4ff', s: this.big ? 2 : 1, g: 0.05 });
     if (isSolid(Math.floor(this.cx / TS), Math.floor((this.y + this.h / 2) / TS))) { this.kill(true); }
   }
   kill(splash) {
@@ -473,8 +472,10 @@ class Enemy {
     this.t++; this.st++; if (this.flash > 0) this.flash--;
     const P = G.player;
     if (this.state === 'tamed' || this.state === 'sorry') {
-      this.vx = this.face * (this.state === 'tamed' ? 2.2 : 1); this.gravity(); moveBody(this);
-      if (wallAhead(this, this.face)) this.vy = -3;
+      // 被打跑：沿地面直直跑出畫面（不跳、不爬平台，可穿過障礙）
+      if (this.st === 1) this.face = (G.player.cx < this.cx ? 1 : -1);
+      this.vx = this.face * (this.state === 'tamed' ? 2.6 : 1.6); this.x += this.vx;
+      if (!this.onGround) { this.vy = Math.min(this.vy + 0.25, 6); this.y += this.vy; const ty = Math.floor((this.y + this.h) / TS), tx = Math.floor(this.cx / TS); if (isSolid(tx, ty) || isOneWay(tx, ty)) { this.y = ty * TS - this.h; this.vy = 0; this.onGround = true; } }
       if (this.st % 20 === 0 && this.state === 'tamed') FX('heal', this.cx, this.y, { opts: { size: 0.25 } , life: 0.3 });
       if (Math.abs(this.x - G.camX - VW / 2) > VW) this.dead = true;
       return;
