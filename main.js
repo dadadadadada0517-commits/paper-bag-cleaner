@@ -7,8 +7,10 @@ const G = {
 let save = { cleared: [], stats: {} };
 try { const s = JSON.parse(localStorage.getItem('pbh_save2') || 'null'); if (s && Array.isArray(s.cleared)) save = s; } catch (e) {}
 function writeSave() { try { localStorage.setItem('pbh_save2', JSON.stringify(save)); } catch (e) {} }
+G.loop = 1; G.char = save.char === 'witch' && save.cleared.includes(4) ? 'witch' : 'hero'; G.hard = !!save.hard; // 角色（一周目破關後可選豪鬼主任）、難度
 function syncAbilities() {
-  const c = [1, 2, 3].filter(n => save.cleared.includes(n));
+  // 二周目：一周目的能力和三把魔王武器全部帶著
+  const c = G.loop === 2 ? [1, 2, 3] : [1, 2, 3].filter(n => save.cleared.includes(n));
   // 打倒任一魔王就能集氣射出大水砲；貴婦給二段跳、狗魔王給衝刺
   G.abilities = { charge: true, djump: c.includes(2), dash: c.includes(3) }; // 洛克人式集氣：一開始就有
   G.gunLv = c.length;
@@ -19,6 +21,7 @@ function syncAbilities() {
 G.refillAmmo = () => { for (const w of G.weapons) G.ammo[w] = 28; };
 G.ammoGain = (n) => { for (const w of G.weapons) if (w !== 'water') G.ammo[w] = Math.min(28, (G.ammo[w] || 0) + n); };
 const QS = new URLSearchParams(location.search);
+const SECRET = QS.get('k') === 'ngp7q'; // 作者用的秘密入口：直接進二周目、全關卡解鎖
 const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 // ---------- 畫布 ----------
@@ -39,7 +42,7 @@ addEventListener('resize', resize); resize();
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
 const LOAD = { n: 0, done: 0 }; // 讀取進度（成功或失敗都算完成，不會卡住）
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { IMG[k] = im; LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'gpt-' + k + '.jpg?v=11222252'; });
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { IMG[k] = im; LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'gpt-' + k + '.jpg?v=11222331'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
 // 去紫邊：只處理貼著透明區、而且「非常接近洋紅」的邊緣像素（不會吃掉粉紅、紫色的衣服頭髮）
@@ -74,19 +77,33 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'ui-' + k + '.webp?v=11222252'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'ui-' + k + '.webp?v=11222331'; });
 // 全部讀完（人物圖＋介面圖＋背景）＝ 1；超過 25 秒也直接放行
 const LOAD_T0 = performance.now();
 function loadProgress() { const p = SPR.progress * 0.6 + (LOAD.n ? LOAD.done / LOAD.n : 1) * 0.4; return performance.now() - LOAD_T0 > 25000 ? 1 : Math.min(1, p); }
 let loadShown = 0; // 顯示用的進度（平滑追上）
 const LOAD_TIPS = ['小提示：沖掉便便，可以補充魔王武器的能量！', '小提示：按住「射」可以集氣，放開發射大水砲！', '小提示：打倒關主，就能吸收他的能力！', '小提示：能量滿了按「絕」，全場清光光！', '小提示：手機「加入主畫面」，全螢幕更好玩！'];
-function drawLoading() {
-  const t = G.t, p = loadProgress(); loadShown += (p - loadShown) * 0.15; if (p >= 1) loadShown = Math.min(1, loadShown + 0.03);
+// ---------- 二周目資源：進二周目（或選豪鬼主任）才下載，平常遊玩不會變慢 ----------
+const LOOP2_IMG = ['p_virus', 'p_typhoon', 'p_rhino', 'p_shacho', 'bg5', 'bg6', 'bg7', 'bg8', 'bg8b'];
+const LZ = { n: 0, done: 0, started: false, t0: 0 };
+function startLoop2Load() {
+  if (LZ.started) return; LZ.started = true; LZ.t0 = performance.now();
+  SPR.loadLazy();
+  LOOP2_IMG.forEach(k => { const im = new Image(); LZ.n++; im.onload = () => { IMG[k] = im; LZ.done++; }; im.onerror = () => LZ.done++; im.src = 'gpt-' + k + '.jpg?v=11222331'; });
+}
+function loop2Progress() { if (!LZ.started) return 0; if (performance.now() - LZ.t0 > 30000) return 1; return Math.min(1, SPR.lazyProgress * 0.7 + (LZ.n ? LZ.done / LZ.n : 1) * 0.3); }
+function enterLoop2() {
+  startLoop2Load();
+  if (loop2Progress() >= 1) return goSelect(2);
+  G.mode = 'lazy'; loadShown = 0; Audio8.music('title');
+}
+function drawLoading(pp) {
+  const t = G.t, p = pp != null ? pp : loadProgress(); loadShown += (p - loadShown) * 0.15; if (p >= 1) loadShown = Math.min(1, loadShown + 0.03);
   const g = sctx.createLinearGradient(0, 0, 0, VH * K); g.addColorStop(0, '#141a3c'); g.addColorStop(1, '#05060f'); sctx.fillStyle = g; sctx.fillRect(0, 0, screen.width, screen.height);
   for (let i = 0; i < 70; i++) { const x = (i * 83 + t * (0.3 + (i % 3) * 0.25)) % VW, y = (i * 47) % VH; sctx.fillStyle = i % 6 ? '#39407a' : '#ffe36a'; sctx.fillRect(x * K, y * K, K, K); }
   // 標題字：一個字一個字上下跳
   const title = '小編出擊！'; for (let i = 0; i < title.length; i++) { const dy = Math.sin(t / 8 - i * 0.7) * 4; txt(title[i], 128 + i * 36, 52 + dy, 28, '#ffe36a', 'center', '#7a2a00'); }
-  txt('維護環境　你我一起來！', 200, 96, 10, '#9ff3ff', 'center', '#0a1030');
+  txt(pp != null ? '二周目　怪人篇　準備中…' : '維護環境　你我一起來！', 200, 96, 10, pp != null ? '#ff9a6a' : '#9ff3ff', 'center', '#0a1030');
   // 洛克人式能量條：金框＋一格一格的水藍色格子，前端有水滴
   const bx = 80, by = 132, bw = 240, bh = 16, n = 24, sw = (bw - 8) / n, fill = Math.floor(loadShown * n);
   box(bx, by, bw, bh, '#0b0e22', '#ffd23f');
@@ -129,10 +146,10 @@ const MIDIMG = {}, PITIMG = {}, SELHEAD = [];
   let segs = [], s = -1; col.forEach((v, i) => { if (v && s < 0) s = i; if (!v && s >= 0) { segs.push([s, i]); s = -1; } }); if (s >= 0) segs.push([s, c.width]);
   segs = segs.filter(g => g[1] - g[0] > c.width / 40).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 5).sort((a, b) => a[0] - b[0]);
   for (const [a, b] of segs) { let top = c.height, bot = 0; for (let j = 0; j < c.height; j++) for (let i = a; i < b; i += 2) if (d[(j * c.width + i) * 4 + 3] > 0) { if (j < top) top = j; bot = j; break; } const o = document.createElement('canvas'); o.width = b - a; o.height = bot - top + 1; o.getContext('2d').drawImage(c, a, top, b - a, bot - top + 1, 0, 0, b - a, bot - top + 1); SELHEAD.push(o); }
-} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11222252'; }
+} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11222331'; }
 [1, 2, 3, 4].forEach(n => {
-  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11222252';
-  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11222252';
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11222331';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11222331';
 });
 
 // ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
@@ -222,6 +239,11 @@ function updateMumble() {
   if (near >= 3) pool.push('狗屎好多…到底是誰不撿！', '狗屎好多…', '狗屎好多…');
   if (G.walkT > 180) pool.push('我痛風發作…', '我痛風發作…', '我痛風發作…'); // 走超過 3 秒，痛風比較容易發作
   if (G.clean / Math.max(1, G.level.total) > 0.5) pool.push('乾淨多了，心情真好！');
+  if (G.char === 'witch') { // 豪鬼主任的碎念
+    pool.length = 0; pool.push('騎掃把巡邏，比走路輕鬆多了～', '誰亂丟垃圾？給我記一支警告！', '這次換我來當好人啦！', '下次朝會要好好宣導一下。', '小編跑太慢了，還是我來吧～', '月考考卷還沒出完…', '呵呵～從上面看，垃圾一清二楚！', 'EMI 計畫還沒寫完…', '我想回去畫畫…', '好想下班…', '我英文不好…');
+    if (near >= 3) pool.push('狗屎好多…這些飼主都給我罰站！', '狗屎好多…');
+    if (G.clean / Math.max(1, G.level.total) > 0.5) pool.push('嗯，乾淨多了，給你們一百分！');
+  }
   let text; do { text = pool[Math.floor(rnd(0, pool.length))]; } while (text === G.lastMumble && pool.length > 1);
   G.lastMumble = text; G.heroSay = { text, t: 130 };
 }
@@ -262,7 +284,7 @@ function drawCameoSay() {
 }
 // 在畫面座標（遊戲單位）置中畫一張 UI 圖，寬度 w
 function uiImg(k, cx, cy, w, alpha = 1) { const c = UI[k]; if (!c) return false; const h = w * c.height / c.width; sctx.globalAlpha = alpha; sctx.drawImage(c, (cx - w / 2) * K, (cy - h / 2) * K, w * K, h * K); sctx.globalAlpha = 1; return true; }
-const PORTRAIT = { hero: 'p_hero', witch: 'p_witch', abo: 'p_abo', lady: 'p_lady', dogking: 'p_dogking', chief: 'p_chief', kid: 'p_kid' };
+const PORTRAIT = { hero: 'p_hero', witch: 'p_witch', abo: 'p_abo', lady: 'p_lady', dogking: 'p_dogking', chief: 'p_chief', kid: 'p_kid', virus: 'p_virus', typhoonB: 'p_typhoon', rhinoB: 'p_rhino', shacho: 'p_shacho' };
 const SPRITE_FALLBACK = { hero: 'hero_stand', witch: 'witchS', abo: 'abo0', lady: 'lady0', dogking: 'dk0', chief: 'chief0', kid: 'kid0' };
 
 // ---------- 輸入 ----------
@@ -381,6 +403,17 @@ function loadLevel(n) {
   for (let x = 0; x < L.w; x++) if (t[9][x] === 'G') { L.gateX = x; break; }
   L.arena = { x0: L.gateX * TS + TS, x1: (L.gateX + 24) * TS };
   G.arena = L.arena;
+  G.level = L; LV = L; // 先設好地圖，下面判斷地形才找得到
+  // 困難模式：小怪加倍（每隻旁邊多一隻；二周目多派戰鬥員／小病毒），怪人入侵更頻繁
+  if (G.hard) {
+    for (const e of G.enemies.slice()) {
+      if (!ENEMY_DEF[e.code] || 'RmMvo'.includes(e.code)) continue;
+      const code = D.loop === 2 ? (Math.random() < 0.5 ? 'g' : 'x') : e.code, x = e.cx + (Math.random() < 0.5 ? -28 : 28);
+      const tx = Math.floor(x / TS), ty = Math.floor((e.y + e.h + 2) / TS);
+      if (isSolid(tx, ty) && !isSolid(tx, ty - 1)) G.enemies.push(new Enemy(code, x, ty * TS));
+    }
+    G.intruderTimer = 450;
+  }
   L.total = total; L.req = Math.ceil(total * 0.5);
   G.level = L; LV = L;
   G.player = new Player(start.x, start.y); G.start = start;
@@ -407,7 +440,11 @@ G.heal = (n) => { const P = G.player; const start = P.hp; P.hp = Math.min(P.maxH
 
 // ---------- 流程 ----------
 function goTitle() { G.mode = 'title'; G.menu = 0; Audio8.music('title'); if (window.VFX) VFX.clear(); }
-function goSelect() { G.mode = 'select'; syncAbilities(); G.sel = [1, 2, 3].every(i => save.cleared.includes(i)) ? 3 : [0, 1, 2].find(i => !save.cleared.includes(i + 1)) || 0; Audio8.music('title'); if (window.VFX) VFX.clear(); }
+function goSelect(loop) {
+  if (loop) G.loop = loop; else G.loop = G.stage >= 5 ? 2 : (G.loop || 1);
+  const o = loopOff(); G.selSayI = -1;
+  G.mode = 'select'; syncAbilities(); G.sel = [1, 2, 3].every(i => save.cleared.includes(o + i)) ? 3 : [0, 1, 2].find(i => !save.cleared.includes(o + i + 1)) || 0; Audio8.music('title'); if (window.VFX) VFX.clear();
+}
 function* storyIntro() {
   G.mode = 'story'; G.storyBg = 'bg1';
   yield* talk(STORY_INTRO);
@@ -453,7 +490,7 @@ function* bossSequence() {
 G.onBossDefeated = (b) => {
   run((function* () {
     G.mode = 'bossDown'; G.player.frozen = true; G.eshots = []; Audio8.stopMusic(); Audio8.sfx('bossdie'); Audio8.sfx('bossboom'); // 魔王被打倒：連環大爆炸 G.flash = 12; G.shake = 16;
-    for (const e of G.enemies) if (e.code === 's') e.dead = true;
+    for (const e of G.enemies) if (e.code === 's' || e.code === 'x' || e.code === 'g') e.dead = true;
     FX(b.kind === 'dogking' ? 'star' : 'converge', b.cx, b.cy, { opts: { size: b.kind === 'dogking' ? 0.9 : 0.7 } });
     yield 130;
     if (Audio8.hasExt('victory')) Audio8.sfx('victory'); else Audio8.music('victory'); G.winPose = true; yield 170; G.winPose = false;
@@ -482,6 +519,10 @@ G.onBossDefeated = (b) => {
       G.mode = 'getAbility'; G.getT = 0; G.getAb = reward; if (Audio8.hasExt('getweapon')) { Audio8.sfx('getweapon'); setTimeout(() => { if (G.mode === 'getAbility') Audio8.music('title'); }, 3300); } else Audio8.music('getweapon', () => Audio8.music('title'));
       yield () => G.getT > 90 && G.input.pressed.ok;
       goSelect();
+    } else if (G.stage !== 4 && G.stage !== 8) {
+      // 二周目的怪人：沒有新武器，打倒後回選關
+      floatText(G.player.cx, G.player.y - 20, 'STAGE CLEAR！', '#ffe36a', true); Audio8.sfx('checkpoint'); yield 120;
+      goSelect();
     } else {
       yield 40; yield* endingSeq();
     }
@@ -490,7 +531,7 @@ G.onBossDefeated = (b) => {
 function* endingSeq() {
   G.mode = 'ending'; G.endT = 0; Audio8.music('ending'); if (window.VFX) VFX.clear();
   yield 60;
-  yield* talk(ENDING);
+  yield* talk(G.stage === 8 ? ENDING2 : ENDING);
   G.mode = 'slogan'; G.slT = 0; // 宣導標語
   yield () => G.slT > 300 || (G.slT > 90 && G.input.pressed.ok);
   G.mode = 'credits'; G.credT = 0;
@@ -502,7 +543,8 @@ function stageStars(s) { if (!s) return 0; let n = 1; if (s.total && s.clean / s
 function stageScore(s) { if (!s) return 0; return Math.max(0, s.clean * 100 + (s.kills || 0) * 50 + stageStars(s) * 1000 + Math.max(0, 2000 - Math.floor((s.time || 0) / 60) * 5) - (s.deaths || 0) * 300); }
 function totals() {
   const t = { stars: 0, score: 0, kills: 0, clean: 0, deaths: 0, time: 0 };
-  for (let n = 1; n <= 4; n++) { const s = save.stats[n]; if (!s) continue; t.stars += stageStars(s); t.score += stageScore(s); t.kills += s.kills || 0; t.clean += s.clean || 0; t.deaths += s.deaths || 0; t.time += s.time || 0; }
+  const o = loopOff();
+  for (let n = o + 1; n <= o + 4; n++) { const s = save.stats[n]; if (!s) continue; t.stars += stageStars(s); t.score += stageScore(s); t.kills += s.kills || 0; t.clean += s.clean || 0; t.deaths += s.deaths || 0; t.time += s.time || 0; }
   t.rank = t.stars >= 12 ? '傳說級清潔英雄' : t.stars >= 9 ? '金牌清潔英雄' : t.stars >= 6 ? '銀牌清潔英雄' : '清潔小尖兵';
   return t;
 }
@@ -553,8 +595,8 @@ function makeCert(name) {
   x.font = `700 28px ${SANS}`; x.fillStyle = '#7a5a20'; x.textAlign = 'left';
   ['關卡', '星星', '清潔', '擊潰', '分數'].forEach((h, i) => x.fillText(h, cols[i], by + 28));
   x.font = `600 28px ${SANS}`;
-  for (let n = 1; n <= 4; n++) { const s = save.stats[n], y = by + 28 + rh * n, D = LEVEL_DATA[n - 1];
-    x.fillStyle = '#3a2410'; x.fillText((n < 4 ? '第' + '一二三'[n - 1] + '關 ' : '最終關 ') + D.name, cols[0], y);
+  for (let i = 1; i <= 4; i++) { const n = loopOff() + i, s = save.stats[n], y = by + 28 + rh * i, D = LEVEL_DATA[n - 1];
+    x.fillStyle = '#3a2410'; x.fillText((i < 4 ? '第' + '一二三'[i - 1] + '關 ' : '最終關 ') + D.name, cols[0], y);
     x.fillStyle = '#e0a800'; x.font = `700 30px ${SANS}`; x.fillText(s ? starStr(stageStars(s)) : '☆☆☆', cols[1], y); x.font = `600 28px ${SANS}`;
     x.fillStyle = '#3a2410'; x.fillText(s ? (s.total ? Math.round(s.clean / s.total * 100) : 100) + '%' : '—', cols[2], y); x.fillText(s ? (s.kills || 0) + ' 隻' : '—', cols[3], y); x.fillText(s ? stageScore(s).toLocaleString() : '—', cols[4], y); }
   x.fillStyle = '#b3262e'; x.font = `900 30px ${SANS}`; const ty = by + 28 + rh * 5;
@@ -584,7 +626,7 @@ function openCert() {
   ['touchstart', 'touchend', 'pointerdown'].forEach(n => d.addEventListener(n, e => e.stopPropagation(), { passive: true }));
   inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') d.querySelector('#cMake').click(); });
   d.querySelector('#cMake').onclick = () => { certName = inp.value.trim(); try { localStorage.setItem('pbh_name', certName); } catch (e) {} certCv = makeCert(certName); Audio8.sfx('select'); inp.blur(); };
-  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11222252'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
+  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11222331'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
   d.querySelector('#cBack').onclick = () => { d.remove(); certUI = null; goTitle(); };
 }
 function drawCertScreen() {
@@ -617,8 +659,10 @@ function ultimate() {
       G.shake = i / 30; yield 1;
     }
     // ② 特寫切入（有 Grok 影片就播影片，否則用 GPT 特寫圖）
-    G.cutin = { t: 0, who: 'hero', name: '全城大掃除！！', sub: '小編 ─ 清潔奧義', dur: 80, color: '#7fe6ff', y: 96 }; Audio8.sfx('cutin');
+    const W = G.char === 'witch';
+    G.cutin = W ? { t: 0, who: 'witch', name: '流星雨魔法！！', sub: '豪鬼主任 ─ 魔女奧義', dur: 80, color: '#ff9ae6', y: 96 } : { t: 0, who: 'hero', name: '全城大掃除！！', sub: '小編 ─ 清潔奧義', dur: 80, color: '#7fe6ff', y: 96 }; Audio8.sfx('cutin');
     yield () => G.cutin.t > 80; G.cutin = null;
+    if (W) { yield* witchMeteorUlt(prev); return; }
     // ③ GPT 巨大水砲：從槍口延伸到畫面邊緣，沿路依序沖掉便便、打倒敵人
     G.mode = 'ultraFire'; G.flash = 12; G.shake = 14; Audio8.sfx('ultfire');
     const dir = P.face, gx = P.cx + dir * 18, gy = P.y + 10 - G.ultraLift;
@@ -661,6 +705,49 @@ function ultimate() {
     P.frozen = false; if (G.mode === 'ultraFire') G.mode = prev === 'boss' ? 'boss' : 'play';
   })());
 }
+// 豪鬼主任的大絕招：流星雨（先出現鎖定標記，再一顆一顆砸下來，清光畫面上的小怪和便便）
+function* witchMeteorUlt(prev) {
+  const P = G.player;
+  G.mode = 'ultraFire'; G.flash = 10; Audio8.sfx('magic');
+  const onScreen = o => o.x > G.camX - 10 && o.x < G.camX + VW + 10;
+  const targets = [
+    ...G.items.filter(it => (it.type === 'poop' || it.type === 'big' || it.type === 'trash') && onScreen(it)).map(it => ({ k: 'item', o: it })),
+    ...G.enemies.filter(onScreen).map(e => ({ k: 'enemy', o: e })),
+  ];
+  let n = 0;
+  const hit = tg => {
+    const o = tg.o; if (o.dead) return;
+    if (tg.k === 'item') { o.dead = true; n += o.type === 'big' ? 2 : 1; sparks(o.cx, o.y, '#ffd0f2', 6, 2, 0); Audio8.sfx('clean', 0.03); }
+    else { o.damage(99, null); G.shake = 6; }
+  };
+  // 落點：每個目標附近一顆，其餘平均灑滿畫面；魔王頭上一定有一顆
+  const fy = G.boss ? G.boss.floorY : 176;
+  const xs = targets.map(t => t.o.cx);
+  for (let i = 0; i < 6; i++) xs.push(G.camX + 30 + i * (VW - 60) / 5 + rnd(-12, 12));
+  if (G.boss && !G.boss.defeated) xs.push(G.boss.cx, G.boss.cx);
+  xs.sort(() => Math.random() - 0.5);
+  const rain = xs.slice(0, 16).map((x, i) => ({ x, t0: i * 7 }));
+  const end = rain[rain.length - 1].t0 + 50;
+  for (let t = 0; t <= end; t++) {
+    for (const m of rain) {
+      if (t === m.t0) FX('warn', m.x, fy, { opts: { size: 1 } });
+      if (t === m.t0 + 18) FX('meteor', m.x, fy, { opts: { size: 0.6 }, fall: 16 });
+      if (t === m.t0 + 34) {
+        G.shake = 8; G.flash = 2; Audio8.sfx('explode', 0.04);
+        for (const tg of targets) if (Math.abs(tg.o.cx - m.x) < 40) hit(tg);
+        if (G.boss && !G.boss.defeated && Math.abs(G.boss.cx - m.x) < 50) { G.boss.inv = 0; G.boss.damage(4, null); }
+      }
+    }
+    P.shootT = 8; yield 1;
+  }
+  for (const tg of targets) hit(tg); // 剩下的也一起清掉
+  if (n) { G.clean += n; G.score += 80 * n; G.ammoGain(n); floatText(P.cx, P.y - 30, `一口氣清掉 ${n} 個！`, '#ffd0f2', true); }
+  G.flash = 10; G.ultraStamp = 70; Audio8.sfx('stomp'); G.ultraAura = 0;
+  for (let i = 0; i < 20; i++) { G.dark = Math.max(0, 0.85 - i / 20); G.ultraLift = Math.max(0, 6 - i / 3); yield 1; }
+  yield 40;
+  G.dark = 0; G.heroGlow = 0; G.ultraLift = 0;
+  P.frozen = false; if (G.mode === 'ultraFire') G.mode = prev === 'boss' ? 'boss' : 'play';
+}
 
 // ---------- 更新 ----------
 function update() {
@@ -679,7 +766,8 @@ function update() {
   }
   stepScript();
   switch (G.mode) {
-    case 'boot': if (loadProgress() >= 1 && loadShown > 0.98) goTitle(); break; // 全部讀完就直接進開始畫面
+    case 'boot': if (loadProgress() >= 1 && loadShown > 0.98) { goTitle(); if (SECRET) enterLoop2(); } break; // 全部讀完就直接進開始畫面
+    case 'lazy': if (loop2Progress() >= 1 && loadShown > 0.98) goSelect(2); break; // 二周目資源讀完 → 選關
     case 'title': {
       const opts = titleOptions();
       if (I.pressed.up) { G.menu = (G.menu + opts.length - 1) % opts.length; Audio8.sfx('cursor'); }
@@ -689,12 +777,13 @@ function update() {
     }
     case 'help': if (I.pressed.ok) { G.mode = 'title'; Audio8.sfx('cursor'); } break;
     case 'select': {
+      const o = loopOff();
       if (G.sel < 3) {
         if (I.pressed.left) { G.sel = (G.sel + 2) % 3; Audio8.sfx('cursor'); }
         if (I.pressed.right) { G.sel = (G.sel + 1) % 3; Audio8.sfx('cursor'); }
         if (I.pressed.down) { G.sel = 3; Audio8.sfx('cursor'); }
       } else if (I.pressed.up || I.pressed.left || I.pressed.right) { G.sel = 1; Audio8.sfx('cursor'); }
-      if (I.pressed.ok) { if (stageUnlocked(G.sel + 1)) startStage(G.sel + 1); else { Audio8.sfx('hurt'); toast('最終關：要先打倒三個魔王才能挑戰！'); } }
+      if (I.pressed.ok) { if (stageUnlocked(o + G.sel + 1)) startStage(o + G.sel + 1); else { Audio8.sfx('hurt'); toast(o ? '最終關：要先打倒三個怪人才能挑戰！' : '最終關：要先打倒三個魔王才能挑戰！'); } }
       if (I.pressed.dash) { goTitle(); }
       break;
     }
@@ -735,14 +824,25 @@ function update() {
   }
 }
 function titleOptions() {
-  const o = [];
-  if (save.cleared.length) o.push(['繼續（關卡選擇）', () => goSelect()]);
-  o.push(['開始新遊戲', () => { save = { cleared: [], stats: {} }; writeSave(); syncAbilities(); G.deaths = 0; goSelect(); }]);
+  const o = [], loop1 = save.cleared.includes(4) || QS.has('all') || SECRET;
+  if (save.cleared.some(n => n <= 4)) o.push(['繼續（關卡選擇）', () => goSelect(1)]);
+  if (loop1) o.push(['★ 二周目（怪人篇）', () => enterLoop2()]);
+  o.push(['開始新遊戲', () => { const keep = { char: save.char, hard: save.hard }; save = { cleared: [], stats: {}, ...keep }; writeSave(); syncAbilities(); G.deaths = 0; goSelect(1); }]);
+  if (loop1) o.push(['角色：' + (G.char === 'witch' ? '豪鬼主任（飛行）' : '小編'), () => { G.char = save.char = G.char === 'witch' ? 'hero' : 'witch'; writeSave(); if (G.char === 'witch') { startLoop2Load(); toast('豪鬼主任：空中連點「跳」飛行，自動滑翔，絕招＝流星雨！'); } }]);
+  o.push(['難度：' + (G.hard ? '困難' : '普通'), () => { G.hard = save.hard = !G.hard; writeSave(); }]);
   o.push(['操作說明', () => { G.mode = 'help'; }]);
   return o;
 }
 // 洛克人式選關：1~3 關任意順序；最終關要三個魔王都打倒才開
-function stageUnlocked(n) { return n <= 3 || [1, 2, 3].every(i => save.cleared.includes(i)) || QS.has('all'); }
+// 二周目（5~8）：一周目破關後開放；最終關（8）要先打倒三個怪人
+function stageUnlocked(n) {
+  if (QS.has('all') || SECRET) return true;
+  if (n <= 3) return true;
+  if (n === 4) return [1, 2, 3].every(i => save.cleared.includes(i));
+  if (n <= 7) return save.cleared.includes(4);
+  return [5, 6, 7].every(i => save.cleared.includes(i));
+}
+function loopOff() { return G.loop === 2 ? 4 : 0; }
 
 function worldUpdate(cutscene) {
   const L = G.level, P = G.player; if (!L) return;
@@ -832,7 +932,7 @@ function drawBackground() {
   const L = G.level, D = L.def, cam = G.camX;
   const gr = ctx.createLinearGradient(0, 0, 0, VH); gr.addColorStop(0, D.sky[0]); gr.addColorStop(1, D.sky[1]);
   ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
-  const bg = IMG[D.bg], fx25 = !G.lowFx;
+  const bg = (G.boss && D.bossBg && IMG[D.bossBg]) || IMG[D.bg], fx25 = !G.lowFx; // 魔王房間可以有自己的背景（怪獸基地內部）
   if (bg) {
     // 遠景：景深模糊＋輕微放大（2.5D 景深感）
     if (fx25) ctx.filter = 'blur(3px) brightness(0.78) saturate(0.85)';
@@ -1014,6 +1114,7 @@ function drawWorld() {
   for (const p of G.parts) {
     if (p.delay > 0) continue;
     const a = Math.min(1, p.life / (p.max * 0.5)); ctx.globalAlpha = a; ctx.fillStyle = p.c;
+    if (p.smoke) { const k = 1 - p.life / p.max; ctx.globalAlpha = a * 0.7; ctx.beginPath(); ctx.arc(Math.round(p.x - cam), Math.round(p.y), p.s * (0.6 + k * 1.2), 0, 7); ctx.fill(); continue; } // 黑氣：越飄越大、越淡
     if (p.orb) { // 光點：由大到小、閃爍、外圈光暈
       ctx.globalAlpha = 1;
       const k = p.life / p.max, r = Math.max(1, Math.round(p.s * (0.25 + 0.75 * k) * (p.life % 6 < 3 ? 1 : 0.8)));
@@ -1240,7 +1341,7 @@ function drawBand(c) {
   if (t < 5) { sctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - t / 5)})`; sctx.fillRect(0, 0, VW * K, VH * K); }
 }
 // 歧路旅人式切入：斜向橫帶＋速度線＋眼部特寫（不用全畫面）
-const EYE = { hero: 0.30, witch: 0.40, abo: 0.33, lady: 0.26, dogking: 0.31, chief: 0.34, kid: 0.36 };
+const EYE = { hero: 0.30, witch: 0.40, abo: 0.33, lady: 0.26, dogking: 0.31, chief: 0.34, kid: 0.36, virus: 0.38, typhoonB: 0.40, rhinoB: 0.36, shacho: 0.30 };
 function drawCutin() {
   const c = G.cutin; if (!c) return;
   if (c.who) return drawBand(c);
@@ -1278,7 +1379,9 @@ function drawTitle() {
 
   if (G.mode === 'help') { drawHelp(); return; }
   const opts = titleOptions();
-  opts.forEach((o, i) => txt((i === G.menu ? '▶ ' : '　') + o[0], 150, 150 + i * 16, 11, i === G.menu ? '#ffe36a' : '#ddd'));
+  const many = opts.length > 4, oy = many ? 118 : 150, os = many ? 13 : 16;
+  if (many) box(128, oy - 4, 150, opts.length * os + 6, 'rgba(7,8,15,0.55)');
+  opts.forEach((o, i) => txt((i === G.menu ? '▶ ' : '　') + o[0], 140, oy + i * os, many ? 10 : 11, i === G.menu ? '#ffe36a' : o[0].startsWith('★') ? '#ff9a6a' : '#ddd'));
   if (IS_TOUCH) txt('蘑菇頭上下選擇，按綠色「射」確定', 200, 198, 8, '#7dffa0', 'center');
   txt(IS_TOUCH ? (navigator.standalone || matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches ? '全螢幕模式　手機請橫放' : '想要畫面更大？Safari 按「分享」→「加入主畫面」，從主畫面打開就是全螢幕！') : 'M：靜音　F：特效品質', 200, 212, 7, IS_TOUCH ? '#ffe36a' : '#9aa', 'center');
 }
@@ -1293,8 +1396,10 @@ function drawSelect() {
   // 原本的星空背景＋洛克人式十字排列：左／上／右＝三個關卡，下＝豪鬼主任，中間＝小編
   sctx.fillStyle = '#0b0d1e'; sctx.fillRect(0, 0, screen.width, screen.height);
   for (let i = 0; i < 60; i++) { const x = (i * 83 + G.t * (1 + i % 3) * 0.3) % VW, y = (i * 41) % VH; sctx.fillStyle = i % 5 ? '#4a4f7a' : '#fff'; sctx.fillRect(x * K, y * K, K, K); }
-  txt('STAGE SELECT', 200, 4, 13, '#ffe36a', 'center');
-  txt(IS_TOUCH ? '用蘑菇頭選關卡，按綠色「射」確定' : '方向鍵選關卡，按 Z 或 X 確定', 200, 21, 7, '#9ff3ff', 'center');
+  const o = loopOff();
+  txt(o ? 'STAGE SELECT  二周目' : 'STAGE SELECT', 200, 4, 13, o ? '#ff9a6a' : '#ffe36a', 'center');
+  txt(IS_TOUCH ? '蘑菇頭選關卡' : '方向鍵選關卡', 56, 26, 7, '#9ff3ff', 'center'); txt(IS_TOUCH ? '按綠色「射」確定' : '按 Z 或 X 確定', 56, 37, 7, '#9ff3ff', 'center');
+  txt(IS_TOUCH ? '按「衝」回開始畫面' : '按 C 回開始畫面', 56, 52, 7, '#ffd23f', 'center'); txt('（可換角色、難度）', 56, 63, 7, '#ffd23f', 'center');
   const F = 48, P = [[96, 118], [200, 52], [304, 118], [200, 184]], C = [200, 118];
   // 中心到四格的連接光帶
   for (const [x, y] of P) { sctx.strokeStyle = 'rgba(127,230,255,0.25)'; sctx.lineWidth = 3 * K; sctx.beginPath(); sctx.moveTo(C[0] * K, C[1] * K); sctx.lineTo(x * K, y * K); sctx.stroke(); }
@@ -1304,7 +1409,7 @@ function drawSelect() {
     return [x, y + lift];
   };
   P.forEach(([cx, cy], i) => {
-    const D = LEVEL_DATA[i], sel = G.sel === i, unlocked = stageUnlocked(i + 1), cleared = save.cleared.includes(i + 1);
+    const D = LEVEL_DATA[o + i], sel = G.sel === i, unlocked = stageUnlocked(o + i + 1), cleared = save.cleared.includes(o + i + 1);
     const [x, y] = frame(cx, cy, sel, i === 3 ? '#b07aff' : '#6a6f8a');
     if (unlocked) { if (cleared) sctx.globalAlpha = 0.4; portrait(D.boss, x, y, F, false); sctx.globalAlpha = 1; }
     else { sctx.fillStyle = '#0a0c18'; sctx.fillRect(x * K, y * K, F * K, F * K); sctx.globalAlpha = 0.25; portrait(D.boss, x, y, F, false); sctx.globalAlpha = 1; txt('🔒', cx, y + F / 2 - 10, 14, '#fff', 'center', null); }
@@ -1312,20 +1417,21 @@ function drawSelect() {
     txt(D.bossName, cx, y + F + 4, 7, sel ? '#ffe36a' : '#ff9fc8', 'center');
   });
   { const [x, y] = frame(C[0], C[1], false, '#7fe6ff');
-    const hi = [1, 3, 2, 4][G.sel], h = SELHEAD.length === 5 ? SELHEAD[hi] : null;
-    if (h) { const k = Math.min(F / h.width, F / h.height); sctx.drawImage(h, (C[0] - h.width * k / 2) * K, (y + F - h.height * k) * K, h.width * k * K, h.height * k * K); }
+    const hi = [1, 3, 2, 4][G.sel], h = SELHEAD.length === 5 && !o && G.char !== 'witch' ? SELHEAD[hi] : null;
+    if (G.char === 'witch') portrait('witch', x, y, F, false);
+    else if (h) { const k = Math.min(F / h.width, F / h.height); sctx.drawImage(h, (C[0] - h.width * k / 2) * K, (y + F - h.height * k) * K, h.width * k * K, h.height * k * K); }
     else portrait('hero', x, y, F, false);
-    txt('小編', C[0], y + F + 4, 7, '#7fe6ff', 'center'); }
+    txt(G.char === 'witch' ? '豪鬼主任' : '小編', C[0], y + F + 4, 7, '#7fe6ff', 'center'); }
   // 選到的關主講一句話（打字效果）
-  if (G.selSayI !== G.sel) { G.selSayI = G.sel; const q = SELECT_QUOTES[G.sel]; G.selSayText = q[Math.floor(rnd(0, q.length))]; G.selSayT0 = G.t; }
-  { const Dq = LEVEL_DATA[G.sel], n = Math.min(G.selSayText.length, Math.floor((G.t - G.selSayT0) / 2)), col = ['#ff9a3a', '#ff7ad9', '#b07aff', '#ff4552'][G.sel];
+  if (G.selSayI !== G.sel) { G.selSayI = G.sel; const q = SELECT_QUOTES[o + G.sel]; G.selSayText = q[Math.floor(rnd(0, q.length))]; G.selSayT0 = G.t; }
+  { const Dq = LEVEL_DATA[o + G.sel], n = Math.min(G.selSayText.length, Math.floor((G.t - G.selSayT0) / 2)), col = ['#ff9a3a', '#ff7ad9', '#b07aff', '#ff4552'][G.sel];
     const [qx, qy] = [[14, 150], [234, 36], [228, 150], [234, 152]][G.sel], qw = 158;
     box(qx, qy, qw, 30, 'rgba(10,12,28,0.94)', col); txt(Dq.bossName, qx + 6, qy + 4, 7, col, 'left'); txt(G.selSayText.slice(0, n), qx + 6, qy + 16, 7.5, '#ffffff', 'left');
     if (n < G.selSayText.length && n % 2 === 0 && (G.t - G.selSayT0) % 4 === 0) Audio8.sfx('blip', 0.05); }
-  const D = LEVEL_DATA[G.sel];
-  txt(D.name, 40, 196, 8, '#ffffff', 'center'); txt(stageUnlocked(G.sel + 1) ? (IS_TOUCH ? '按「射」出發' : 'Z 出發') : '打倒三個魔王解鎖', 40, 208, 6, '#aab', 'center');
-  txt('水槍 Lv.' + (G.gunLv + 1), 360, 196, 7, '#9ff3ff', 'center');
-  if (save.cleared.length && G.sel < 3) txt('魔王互相克制！', 360, 208, 6, '#ffd23f', 'center');
+  const D = LEVEL_DATA[o + G.sel];
+  txt(D.name, 40, 196, 8, '#ffffff', 'center'); txt(stageUnlocked(o + G.sel + 1) ? (IS_TOUCH ? '按「射」出發' : 'Z 出發') : o ? '打倒三個怪人解鎖' : '打倒三個魔王解鎖', 40, 208, 6, '#aab', 'center');
+  txt((G.char === 'witch' ? '魔法星星' : '水槍') + ' Lv.' + (G.gunLv + 1) + (G.hard ? '　困難' : ''), 360, 196, 7, G.hard ? '#ff8a8a' : '#9ff3ff', 'center');
+  if ((o || save.cleared.length) && G.sel < 3) txt(o ? '怪人也有弱點武器！' : '魔王互相克制！', 360, 208, 6, '#ffd23f', 'center');
 }function drawStageCard() {
   // 洛克人式出場卡：白閃 → 上下鐵幕夾成橫帶 → 魔王頭像砸下來 → 關卡標題彈出 → 魔王名字逐字打出
   const D = LEVEL_DATA[G.cardStage - 1], t = G.cardT, col = G.cardStage === 4 ? '#b07aff' : '#ff9fc8';
@@ -1416,7 +1522,7 @@ function drawCredits() {
   const t = G.credT, y0 = 230 - t * 0.35;
   const tt = Object.values(save.stats).reduce((a, s) => a + (s.time || 0), 0);
   const cl = Object.values(save.stats).reduce((a, s) => a + (s.clean || 0), 0);
-  const T = totals(), stg = [1, 2, 3, 4].map(n => { const s = save.stats[n], D = LEVEL_DATA[n - 1]; return (n < 4 ? '第' + '一二三'[n - 1] + '關' : '最終關') + '　' + D.name + '　' + (s ? starStr(stageStars(s)) + '　' + stageScore(s).toLocaleString() + ' 分' : '☆☆☆'); });
+  const T = totals(), stg = [1, 2, 3, 4].map(i => { const n = loopOff() + i, s = save.stats[n], D = LEVEL_DATA[n - 1]; return (i < 4 ? '第' + '一二三'[i - 1] + '關' : '最終關') + '　' + D.name + '　' + (s ? starStr(stageStars(s)) + '　' + stageScore(s).toLocaleString() + ' 分' : '☆☆☆'); });
   const L = ['小編出擊！', '', '— 演出 —', '主角　小編', '熱心居民　小學生', '遛狗不撿阿伯　名牌貴婦　狗魔王', '最終魔王　豪鬼主任', '中央山脈超人　針筒超人', '', '— 你的成績 —', ...stg, '', `總星數　★ ${T.stars} / 12`, `清潔分數　${T.score.toLocaleString()} 分`, `擊潰敵人　${T.kills} 隻`, `清掃數量　${cl}`, `倒下次數　${T.deaths} 次`, `總遊玩時間　${Math.floor(tt / 3600)} 分 ${Math.floor(tt / 60) % 60} 秒`, `稱號　${T.rank}`, '', '遛狗請牽繩，便便請撿走！', '', 'THE END'];
   L.forEach((l, i) => { const y = y0 + i * 20; if (i === 0 && uiImg('ui_logo', 200, y + 10, 200)) return; if (l === 'THE END' && uiImg('ui_win', 200, y + 20, 240)) return; txt(l, 200, y, i === 0 ? 20 : l === 'THE END' ? 22 : 10, i === 0 || l === 'THE END' ? '#ffe36a' : '#fff', 'center'); });
 }
@@ -1434,6 +1540,7 @@ function drawPause() {
 function render() {
   sctx.imageSmoothingEnabled = false;
   const m = G.mode;
+  if (m === 'lazy') return drawLoading(loop2Progress());
   if (m === 'boot' || m === 'title' || m === 'help') return drawTitle();
   if (m === 'select') return drawSelect();
   if (m === 'stageCard') return drawStageCard();
@@ -1476,7 +1583,7 @@ function render() {
   if (m === 'bossDown' && G.winPose) uiImg('ui_clear', 200, 70, 260, Math.min(1, (G.t % 1000) / 10));
   if (G.player.dead && G.player.deadT > 60) txt('再試一次！', 200, 100, 14, '#fff', 'center');
   drawCutin();
-  if (G.ultraStamp > 0) { G.ultraStamp--; const k = G.ultraStamp > 60 ? 1 + (G.ultraStamp - 60) * 0.12 : 1; sctx.save(); sctx.translate(200 * K, 70 * K); sctx.scale(k, k); sctx.rotate(-0.06); sctx.translate(-200 * K, -70 * K); if (!uiImg('ui_ultimate', 200, 70, 240, Math.min(1, G.ultraStamp / 15))) txt('全城大掃除！！', 200, 58, 22, '#ffe36a', 'center', '#7a1d00'); sctx.restore(); }
+  if (G.ultraStamp > 0) { G.ultraStamp--; const k = G.ultraStamp > 60 ? 1 + (G.ultraStamp - 60) * 0.12 : 1; sctx.save(); sctx.translate(200 * K, 70 * K); sctx.scale(k, k); sctx.rotate(-0.06); sctx.translate(-200 * K, -70 * K); if (G.char === 'witch') txt('流星雨魔法！！', 200, 58, 22, '#ffd0f2', 'center', '#5a1a6a'); else if (!uiImg('ui_ultimate', 200, 70, 240, Math.min(1, G.ultraStamp / 15))) txt('全城大掃除！！', 200, 58, 22, '#ffe36a', 'center', '#7a1d00'); sctx.restore(); }
   drawDialog();
   if (m === 'pause') drawPause();
   if (toastMsg) { const w = 300; box(50, 40, w, 20, 'rgba(10,12,28,0.92)', '#ffd23f'); txt(toastMsg.m, 200, 45, 9, '#fff', 'center', null); }
@@ -1495,9 +1602,14 @@ function loop(now) {
   try { render(); renderToast(); } catch (e) { console.error('render', e); }
 }
 syncAbilities();
+if (G.char === 'witch') setTimeout(startLoop2Load, 3000); // 上次選了豪鬼主任：等主要資源讀完再補下載她的圖
 // 測試用網址參數：?stage=2&boss=1&all=1
 if (QS.has('stage')) {
-  const n = +QS.get('stage'); if (QS.has('abil')) { save.cleared = [1, 2, 3].filter(i => i < n || QS.get('abil') === 'all'); syncAbilities(); }
+  const n = +QS.get('stage');
+  if (n >= 5) { G.loop = 2; startLoop2Load(); }
+  if (QS.has('witch')) { G.char = 'witch'; startLoop2Load(); }
+  if (QS.has('hard')) G.hard = true;
+  if (QS.has('abil')) { save.cleared = [1, 2, 3].filter(i => i < n || QS.get('abil') === 'all'); syncAbilities(); }
   loadLevel(n); G.mode = 'play'; G.abilities = { charge: true, djump: n > 2 || QS.has('abil'), dash: n > 3 || QS.has('abil') };
   if (QS.has('boss')) { G.clean = G.level.total; const P = G.player; P.x = (G.level.gateX - 3) * TS; G.camX = camMax(); }
   if (QS.has('ultra')) G.ultra = 100;

@@ -17,6 +17,14 @@ const SPR = (() => {
     h3: { rows: [['m_idle', 'm_step', 'm_run0', 'm_run1', 'm_run2'], ['m_shoot', 'm_rs0', 'm_rs1', 'm_rs2', 'm_jump', 'm_jshoot', 'm_hurt']], h: 44 },
     h2: { rows: [['h_climb0', 'h_climb1', 'h_hurt', 'h_stagger', 'h_kneel'], ['h_idle0', 'h_idle1', 'h_wave', 'h_thumb', 'h_cheer']], h: 44, ref: [1, 0] },
     witch: { rows: [['w_stand', ...R8('w_run')], ['w_ride0', 'w_ride1', 'w_ride2', 'w_ride3', 'w_sweep0', 'w_sweep1', 'w_sweep2', 'w_sweep3', 'w_cheer']], h: 46 },
+    // ---- 二周目（lazy：進二周目才載入）----
+    virus_boss: { lazy: true, feet: /^vb_/, rows: [['vb_idle0', 'vb_idle1', 'vb_walk0', 'vb_walk1', 'vb_walk2', 'vb_walk3', 'vb_spit'], ['vb_crouch', 'vb_jump', 'vb_puff', 'vb_hurt', 'vb_ko0', 'vb_ko1']], h: 64 },
+    // 怪獸社長（渾身黑氣版）：GPT 排出來的順序 → 第一排 站/待機/走/跑，第二排 握拳召喚/施法；瞬移、浮空、受傷、倒地在 shacho2
+    shacho: { lazy: true, feet: /^sh_/, rows: [['sh_stand', 'sh_idle', 'sh_walk0', 'sh_run0', 'sh_run1', 'sh_walk1', 'sh_walk2'], ['sh_stand2', 'sh_summon', 'sh_cast0', 'sh_cast1', 'sh_castbig', 'sh_cast2', 'sh_stand3']], h: 80 },
+    shacho2: { lazy: true, feet: /^sh_(hurt|ko)/, rows: [['sh_tpout', 'sh_tpin', 'sh_float', 'sh_hurt', 'sh_ko0', 'sh_ko1']], h: 80 },
+    grunt: { lazy: true, feet: /^g_/, rows: [['g_run0', 'g_run1', 'g_run2', 'g_run3', 'g_punch0', 'g_punch1', 'g_ko', 'g_salute']], h: [[22, 22, 22, 22, 22, 22, { w: 30 }, 22]] }, // 小怪在遊戲裡會再放大 1.5 倍
+    vminion: { lazy: true, rows: [['vm_hop0', 'vm_hop1', 'vm_roll0', 'vm_roll1', 'vm_fly', 'vm_pop']], h: 12 },
+    witch_p: { lazy: true, feet: /^wp_/, rows: [['wp_stand', 'wp_run0', 'wp_run1', 'wp_run2', 'wp_shoot', 'wp_jump'], ['wp_hurt', 'wp_climb', 'wp_charge', 'wp_win', 'wp_dash', 'wp_wave']], h: 44 },
     boss_hurt: { feet: /hurt/, rows: [['a_hurt', 'l_hurt', 'k_hurt']], h: [[44, 48, 72]] }, // 關主被打到的姿勢（GPT）
     witch_hurt: { rows: [['w_hit', 'w_stagger', 'w_kneel']], h: 44, left: true },
     abo: { feet: /^a_(t|stand|sorry)/, rows: [['a_stand', ...R8('a_walk')], ['a_t0', 'a_t1', 'a_t2', 'a_j0', 'a_j1', 'a_sorry0', 'a_sorry1']], h: 44 },
@@ -147,9 +155,21 @@ const SPR = (() => {
     x.putImageData(im, 0, 0);
     f[dst] = { ...s, img: c };
   }
-  let loaded = 0, total = 0;
+  let loaded = 0, total = 0, lzLoaded = 0, lzTotal = 0, lzStarted = false;
+  // 二周目的圖（lazy:true）只有進二周目才下載，平常遊玩不會變慢
+  function loadLazy() {
+    if (lzStarted) return; lzStarted = true;
+    for (const [file, spec] of Object.entries(MANIFEST)) {
+      if (!spec.lazy) continue; lzTotal++;
+      const img = new Image();
+      img.onload = () => { try { cut(img, spec); } catch (e) { console.warn('sheet', file, e); } lzLoaded++; };
+      img.onerror = () => { lzLoaded++; };
+      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11222331';
+    }
+  }
   function load() {
     for (const [file, spec] of Object.entries(MANIFEST)) {
+      if (spec.lazy) continue;
       total++;
       const img = new Image();
       img.onload = () => {
@@ -160,7 +180,7 @@ const SPR = (() => {
         if (file === 'dogs') Object.keys(f).filter(n => n.startsWith('d_')).forEach(n => recolor(n, 'W' + n, (r, g, b) => { const l = (r + g + b) / 3; return [Math.min(255, l * 0.5 + 125), Math.min(255, l * 0.5 + 123), Math.min(255, l * 0.5 + 130)]; }));
       };
       img.onerror = () => { loaded++; };
-      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11211954';
+      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11222331';
     }
   }
   function has(n) { return !!f[n]; }
@@ -181,5 +201,5 @@ const SPR = (() => {
     ctx.drawImage(s.img, 0, 0, s.img.width, sh, -s.ax * k, -s.h + hh - hh * k, s.w * k, hh * k);
     ctx.restore(); return true;
   }
-  return { load, has, draw, drawBigHead, f, get progress() { return total ? loaded / total : 1; } };
+  return { load, loadLazy, has, draw, drawBigHead, f, get progress() { return total ? loaded / total : 1; }, get lazyProgress() { return lzStarted ? (lzTotal ? lzLoaded / lzTotal : 1) : 0; } };
 })();
