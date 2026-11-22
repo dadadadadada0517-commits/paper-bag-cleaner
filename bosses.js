@@ -35,7 +35,7 @@ class Boss {
       return this.t > 170;
     }
     if (this.kind === 'dogking') {
-      if (this.t === 1) { this.x = this.ax1 - 80; this.rise = 1; FX('hole', this.cx, this.floorY - 30, { life: 1.6, opts: { size: 1.6 } }); Audio8.sfx('siren'); G.dark = 1; }
+      if (this.t === 1) { this.x = this.ax1 - 80; this.rise = 1; FX('hole', this.cx, this.floorY - 30, { life: 1.6, opts: { size: 1.6 } }); Audio8.sfx(Audio8.hasExt('bosswarn') ? 'bosswarn' : 'siren'); G.dark = 1; }
       if (this.t === 50) { FX('thunder', this.cx, this.floorY, { opts: { size: 0.7 } }); Audio8.sfx('explode'); G.flash = 8; G.shake = 10; }
       if (this.t > 50) this.rise = Math.max(0, this.rise - 0.02);
       if (this.t === 110) { this.roar = 40; Audio8.sfx('stomp'); G.shake = 14; FX('shock', this.cx, this.floorY, { opts: { size: 0.9 } }); floatText(this.cx, this.y - 10, '汪嗚嗚嗚嗚——！', '#ff5a5a', true); }
@@ -69,7 +69,7 @@ class Boss {
   }
   hitbox() { return this.kind === 'dogking' ? { x: this.x + 4, y: this.y + 6, w: this.w - 8, h: this.h - 6 } : this; }
   onPhase2() {
-    G.flash = 6; Audio8.sfx('siren');
+    G.flash = 6; Audio8.sfx(Audio8.hasExt('bosswarn') ? 'bosswarn' : 'siren');
     const line = { abo: '可惡！小黑，認真一點！', lady: '我的粉底！你完蛋了！', dogking: '汪嗚！吾要認真了！', witch: '還沒下課喔！第二節課開始！' }[this.kind];
     floatText(this.cx, this.y - 12, line, '#ff8a8a', true);
     if (this.kind === 'witch') { FX('hole', this.cx, this.cy, { life: 1.2, opts: { size: 1.4, color: '#c98aff' } }); }
@@ -158,7 +158,7 @@ class Boss {
         if (this.st > 10 && this.onGround) { this.vx = 0; this.next('idle'); } break;
       case 'rain':
         this.roar = 6;
-        if (this.st === 1) { Audio8.sfx('siren'); floatText(this.cx, this.y - 10, '便便雨，降臨吧！', '#ff8a8a', true); FX('thunder', this.cx, this.y); }
+        if (this.st === 1) { Audio8.sfx(Audio8.hasExt('bosswarn') ? 'bosswarn' : 'siren'); floatText(this.cx, this.y - 10, '便便雨，降臨吧！', '#ff8a8a', true); FX('thunder', this.cx, this.y); }
         if (this.st > 20 && this.st < 110 && this.st % (this.phase2 ? 8 : 12) === 0) { const x = rnd(this.ax0 + 8, this.ax1 - 8); G.eshots.push(new EShot('rain', x, -10, 0, 1.5, { dmg: 3 })); }
         if (this.st > 130) this.next('idle'); break;
       case 'summon':
@@ -211,7 +211,7 @@ class Boss {
           for (let tries = 0; xs.length < n && tries < 200; tries++) { const x = rnd(this.ax0 + 24, this.ax1 - 24); if (xs.every(o => Math.abs(o - x) > 36)) xs.push(x); }
           for (let i = 0; xs.length < n; i++) xs.push(this.ax0 + 24 + ((i + 0.5) / n) * (this.ax1 - this.ax0 - 48));
           this.meteors = xs.map((x, i) => ({ x, t0: 1 + i * 13 }));
-          floatText(this.cx, this.y - 10, '流星雨魔法！', '#ff8a8a', true); Audio8.sfx('siren');
+          floatText(this.cx, this.y - 10, '流星雨魔法！', '#ff8a8a', true); Audio8.sfx(Audio8.hasExt('bosswarn') ? 'bosswarn' : 'siren');
         }
         for (const m of this.meteors || []) {
           if (this.st === m.t0) FX('warn', m.x, this.floorY, { opts: { size: 1.2 } });
@@ -232,7 +232,7 @@ class Boss {
       const cry = { abo: '哇啊！我的袋子被吸走了！', lady: '不要！塑膠袋配不上我的名牌！', dogking: '嗚汪！香香的…好難受！' }[this.kind];
       if (cry && (!this.cryT || G.t - this.cryT > 200)) { this.cryT = G.t; floatText(this.cx, this.y - 30, cry, '#fff'); }
     }
-    this.hp -= dmg; this.inv = weak ? 20 : 10; this.flash = 18; Audio8.sfx('hit');
+    this.hp -= dmg; this.inv = 45; this.flash = 18; Audio8.sfx('hit'); // 洛克人式：被打後約 0.75 秒無敵（會閃爍），不能連續狂打
     if (b) { sparks(b.cx, b.y + b.h / 2, '#bff4ff', 6, 1.6, 0.1); if (dmg >= 6) floatText(this.cx, this.y - 4, 'BIG HIT!', '#ffd23f'); }
     if (this.hp <= 0) { this.hp = 0; this.defeated = true; this.st = 0; this.vx = 0; G.onBossDefeated(this); }
     return true;
@@ -270,7 +270,8 @@ class Boss {
       if (this.rise) { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, VW, this.floorY); ctx.clip(); SPR.draw(ctx, sk, this.cx - cx, dy + this.rise * 72, this.face); ctx.restore(); }
       else { // 被打到：左右抖一下＋往下壓扁一點（受傷反應），再加白色閃爍
         const hit = this.flash > 8 && !this.defeated, ox = hit ? (this.flash % 4 < 2 ? -2 : 2) : 0, sq = hit ? 0.93 : 1;
-        ctx.save(); ctx.translate(Math.round(this.cx - cx + ox), dy); ctx.scale(2 - sq, sq);
+        ctx.save(); if (this.inv > 0 && !this.defeated && !hit && this.inv % 6 < 3) ctx.globalAlpha = 0.35; // 無敵時間：閃爍
+        ctx.translate(Math.round(this.cx - cx + ox), dy); ctx.scale(2 - sq, sq);
         SPR.draw(ctx, sk, 0, 0, this.face); if (white) SPR.draw(ctx, sk, 0, 0, this.face, true, 0.85);
         ctx.restore(); }
       if (this.kind === 'lady' && sk === 'l_stand' && !SPR.has('chi')) {}
