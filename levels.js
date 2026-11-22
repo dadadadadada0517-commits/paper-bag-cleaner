@@ -102,8 +102,8 @@ const LEVEL_DATA = (() => {
       outro: [['rhinoB', '犀牛怪人', '嗚…好啦，廢土我會載去合法的地方處理…'], ['hero', H, '……還要把山坡恢復原狀。'], ['rhinoB', '犀牛怪人', '社長大人…不會放過你的…他就在怪獸基地裡等你…']],
     },
     {
-      id: 8, name: '怪獸基地', sub: 'FINAL STAGE  — 昭和怪獸秘密基地', theme: 4, map: stage8, music: 'stage4', bg: 'bg8', bossBg: 'bg8b', loop: 2,
-      sky: ['#120a24', '#4a1a3a'], boss: 'shacho', bossName: '怪獸社長', portrait: 'p_shacho', reward: null,
+      id: 8, name: '怪獸基地', sub: 'FINAL STAGE  — 昭和怪獸秘密基地', theme: 4, map: stage8, music: 'stage8', bg: 'bg8', bossBg: 'bg8b', loop: 2,
+      sky: ['#120a24', '#4a1a3a'], boss: 'shacho', bossName: '怪獸社長', portrait: 'p_shacho', reward: null, bossMusic: 'boss8',
       npcs: [
         { who: 'chief', lines: [[G, '就是這裡！怪獸基地！怪獸社長的公司，專門收錢幫人亂丟垃圾、亂倒廢土！'], [G, '病毒怪人、颱風怪人、犀牛怪人……全都是他派出去的！'], [H, '……最後一戰。']] },
         { who: 'kid', lines: [[K, '小編大叔，加油！大家都在樓下幫忙打掃喔！'], [H, '……嗯。維護環境，是你我一起來。']] },
@@ -208,8 +208,17 @@ const WITCH_TEXT = {
   '……最後一戰。': '最後一戰，看我的厲害！',
   '……嗯。維護環境，是你我一起來。': '嗯！維護環境，是你我一起來！',
   '……我不是一個人。': '我才不是一個人！',
+  '因為維護環境，是你我一起來！': '因為守護環境，人人有責！',
   '……城市乾淨了，大家都是贏家。': '城市乾淨了，大家都是一百分！',
 };
+// 豪鬼主任版多講的話（接在那一句後面，已經是她的台詞，不再經過 forPlayer 替換）
+const WITCH_EXTRA = {
+  '因為維護環境，是你我一起來！': [['witch', '豪鬼主任', '而且我還有小編幫忙……'], ['witch', '豪鬼主任', '（雖然他沒什麼用）']],
+};
+function forPlayerLines(lines) {
+  if (G.char !== 'witch') return lines;
+  return lines.flatMap(l => { const t = l[l.length - 1], x = WITCH_EXTRA[t]; return x ? [forPlayer(l), ...x] : [forPlayer(l)]; });
+}
 function forPlayer(l) {
   if (G.char !== 'witch') return l;
   const three = l.length === 3, who = three ? l[0] : null, name = three ? l[1] : l[0];

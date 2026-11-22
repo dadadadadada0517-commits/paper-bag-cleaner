@@ -240,16 +240,16 @@ class Boss {
     if (this.cast) this.cast--;
   }
   // 共用：俯衝（先鎖定，再弧線衝過去）→ 結束回傳 true
-  diveStep(say, col) {
+  diveStep(say, col, noMark = false) {
     const P = G.player, A = G.arena, midX = (this.ax0 + this.ax1) / 2;
-    if (this.st === 1) { this.diveX = P.cx; FX('warn', this.diveX, this.floorY, { opts: { size: 1.4 } }); floatText(this.cx, this.y - 8, say, col); }
+    if (this.st === 1) { this.diveX = P.cx; if (!noMark) FX('warn', this.diveX, this.floorY, { opts: { size: 1.4 } }); floatText(this.cx, this.y - 8, say, col); }
     if (this.st < 40) { this.x += (this.diveX - (this.diveX > midX ? 120 : -120) - this.w / 2 - this.x) * 0.06; this.y += (30 - this.y) * 0.06; this.face = this.diveX > this.cx ? 1 : -1; }
     else if (this.st < 90) { const k = (this.st - 40) / 50; this.x += this.face * 5; this.y = 30 + Math.sin(k * Math.PI) * (this.floorY - 32 - this.h); if (this.st % 2 === 0) G.parts.push({ x: this.cx, y: this.cy, vx: 0, vy: 0, life: 20, max: 20, c: col, s: 4, g: 0 }); if (this.st === 41) Audio8.sfx('dash'); }
     this.x = clamp(this.x, A.x0, A.x1 - this.w);
     return this.st >= 90;
   }
   // 共用：流星雨（n 顆，一顆接一顆：先出現鎖定標記，再砸下來）→ 結束回傳 true
-  meteorStep(n, say) {
+  meteorStep(n, say, dark = false) {
     const P = G.player;
     if (this.st === 1) {
       const xs = [clamp(P.cx, this.ax0 + 24, this.ax1 - 24)];
@@ -261,7 +261,7 @@ class Boss {
     }
     for (const m of this.meteors || []) {
       if (this.st === m.t0) FX('warn', m.x, this.floorY, { opts: { size: 1.2 } });
-      if (this.st === m.t0 + 26) FX('meteor', m.x, this.floorY, { opts: { size: 0.6 }, fall: 20 });
+      if (this.st === m.t0 + 26) FX('meteor', m.x, this.floorY, { opts: { size: 0.6 }, fall: 20, dark });
       if (this.st === m.t0 + 46) { G.shake = Math.max(G.shake, 9); Audio8.sfx('explode', 0.02); G.flash = 3; if (Math.abs(P.cx - m.x) < 34 && P.y + P.h > this.floorY - 30) P.hurt(4, m.x, '流星直擊！'); }
     }
     if (!this.meteors || this.st > this.meteors[this.meteors.length - 1].t0 + 70) { this.meteors = null; return true; }
@@ -319,19 +319,21 @@ class Boss {
         const tx = midX + this.side * 120, ty = this.floorY - 60, end = this.phase2 ? 150 : 120;
         this.x += (tx - this.w / 2 - this.x) * 0.06; this.y += (ty - this.h / 2 - this.y) * 0.06; this.face = -this.side; this.blowT = this.st > 30 ? 4 : 0;
         if (this.st > 30 && this.st < end - 20 && this.st % (G.hard ? 7 : 10) === 0) { G.eshots.push(new EShot('gust', this.cx + this.face * 20, this.floorY - rnd(10, 46), this.face * 2.4, 0, { dmg: 2 })); if (this.st % 30 === 0) Audio8.sfx('gas'); }
-        if (this.phase2 && this.st % 40 === 35) G.eshots.push(new EShot('can', this.cx, this.cy, this.face * 3, -2, { dmg: 3 }));
+        if (this.phase2 && this.st % 40 === 35) G.eshots.push(new EShot(this.st % 80 === 75 ? 'bigpoop' : 'bagmon', this.cx, this.cy, this.face * 3, -2, { dmg: 3 }));
         if (this.st > end) this.next('idle'); break; }
       case 'trash':
         if (this.st === 1) { this.dir = this.cx < midX ? 1 : -1; floatText(this.cx, this.y - 8, '垃圾全部吹上街！', '#9fd0ff', true); this.laughT = 30; }
         this.y += (30 - this.y) * 0.08; this.x += this.dir * 2.6; this.face = this.dir;
-        if (this.st % (this.phase2 || G.hard ? 12 : 18) === 6) { G.eshots.push(new EShot('can', this.cx, this.y + this.h - 6, this.dir * 0.4, 0.5, { dmg: 3 })); Audio8.sfx('throw'); }
+        if (this.st % (this.phase2 || G.hard ? 12 : 18) === 6) { // 丟下來的東西：鐵罐（可以撿）、超大臭便便（踩到會痛）、垃圾袋怪（落地會動）
+          this.drops = (this.drops || 0) + 1; const ty = ['can', 'bigpoop', 'can', 'bagmon'][this.drops % 4];
+          G.eshots.push(new EShot(ty, this.cx, this.y + this.h - 6, this.dir * 0.4, 0.5, { dmg: 3 })); Audio8.sfx('throw'); }
         if ((this.dir > 0 && this.x + this.w >= this.ax1) || (this.dir < 0 && this.x <= this.ax0) || this.st > 200) this.next('idle');
         this.x = clamp(this.x, this.ax0, this.ax1 - this.w); break;
-      case 'dive': if (this.diveStep('颱風俯衝！', '#cfe6ff')) this.next('idle'); break;
+      case 'dive': if (this.diveStep('颱風俯衝！', '#cfe6ff', true)) this.next('idle'); break;
       case 'storm':
         fly(120, 40); this.laughT = 4;
         if (this.st === 1) { floatText(this.cx, this.y - 10, '颱風眼！垃圾大雨！', '#ff8a8a', true); Audio8.sfx(Audio8.hasExt('bosswarn') ? 'bosswarn' : 'siren'); }
-        if (this.st > 20 && this.st < 130 && this.st % (G.hard ? 6 : 9) === 0) { const x = rnd(this.ax0 + 8, this.ax1 - 8); FX('warn', x, this.floorY, { opts: { size: 0.7 } }); G.eshots.push(new EShot('can', x, -10, 0, 0.6, { dmg: 3, grav: 0.1 })); }
+        if (this.st > 20 && this.st < 130 && this.st % (G.hard ? 6 : 9) === 0) { const x = rnd(this.ax0 + 8, this.ax1 - 8); this.drops = (this.drops || 0) + 1; G.eshots.push(new EShot(['can', 'bigpoop', 'bagmon', 'can', 'bigpoop'][this.drops % 5], x, -10, 0, 0.6, { dmg: 3, grav: 0.1 })); } // 垃圾大雨：不再畫地上的瞄準框，直接看東西掉下來
         if (this.st > 150) this.next('idle'); break;
     }
     if (this.laughT) this.laughT--;
@@ -354,7 +356,7 @@ class Boss {
           this.vx = this.chDir * (this.phase2 || G.hard ? 6 : 5); this.face = this.chDir; this.running = true; if (this.st % 5 === 0) FX('dust', this.cx - this.chDir * 18, this.floorY, { opts: { size: 0.3 } });
           if (hitWall || this.st > 160) {
             this.vx = 0; this.running = false; G.shake = 14; Audio8.sfx('explode'); FX('shock', this.cx + this.chDir * 20, this.floorY, { opts: { size: 0.7 } }); floatText(this.cx, this.y - 10, '暈…', '#fff');
-            const n = (this.phase2 ? 5 : 3) + (G.hard ? 2 : 0); for (let i = 0; i < n; i++) { const x = rnd(this.ax0 + 12, this.ax1 - 12); FX('warn', x, this.floorY, { opts: { size: 0.8 } }); G.eshots.push(new EShot('rock', x, -10 - i * 34, 0, 1, { dmg: 3 })); }
+            const n = (this.phase2 ? 5 : 3) + (G.hard ? 2 : 0); for (let i = 0; i < n; i++) { const x = rnd(this.ax0 + 12, this.ax1 - 12); G.eshots.push(new EShot('rock', x, -10 - i * 34, 0, 1, { dmg: 3 })); }
             this.next('dizzy');
           }
         } break;
@@ -410,7 +412,7 @@ class Boss {
         if (this.st > 60) this.next('idle'); break;
       case 'dark':
         this.floatUp = true; this.castT = 4; this.vy = 0; this.y += (40 - this.y) * 0.06;
-        if (this.meteorStep((this.phase2 ? 7 : 5) + (G.hard ? 2 : 0), '黑暗隕石雨！')) { this.floatUp = false; this.next('idle'); } break;
+        if (this.meteorStep((this.phase2 ? 7 : 5) + (G.hard ? 2 : 0), '黑暗隕石雨！', true)) { this.floatUp = false; this.next('idle'); } break;
     }
     if (this.castT) this.castT--; if (this.summonT) this.summonT--;
   }

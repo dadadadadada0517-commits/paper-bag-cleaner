@@ -96,6 +96,17 @@ const Audio8 = (() => {
       bass: '|C2 C3 C2 C3 C2 C3 C2 C3|C2 C3 C2 C3 C2 C3 C2 C3|Ab2 Ab3 Ab2 Ab3 Ab2 Ab3 Ab2 Ab3|G2 G3 G2 G3 G2 G3 G2 G3|C2 C3 C2 C3 C2 C3 C2 C3|F2 F3 F2 F3 G2 G3 G2 G3|Ab2 Ab3 Ab2 Ab3 G2 G3 G2 G3|C2 C3 C2 C3 G2 G3 G2 G3|',
       harm: '|~C4,Eb4,G4|~C4,Eb4,G4|~Ab3,C4,Eb4|~G3,B3,D4|~C4,Eb4,G4|~F4,Ab4,C5|~Ab3,C4,Eb4|~G3,B3,D4|',
       drums: 'k.hsk.hsk.hsk.ss' },
+    // 怪獸基地（第 8 關）與怪獸社長戰：Suno 緊張熱血帶點恐怖；沒檔案時用合成音
+    stage8: { bpm: 160, loop: true,
+      lead: '|C5:2 C5:2 Eb5:2 C5:2 F#5:2 G5:2 Eb5:4|D5:2 Eb5:2 C5:2 B4:2 C5:8|Ab4:2 C5:2 Eb5:2 Ab5:2 G5:4 F#5:4|G5:2 F5:2 Eb5:2 D5:2 B4:8|',
+      bass: '|C2 C3 C2 C3 C2 C3 C2 C3|C2 C3 C2 C3 G1 G2 G1 G2|Ab1 Ab2 Ab1 Ab2 Ab1 Ab2 Ab1 Ab2|G1 G2 G1 G2 G1 G2 B1 D2|',
+      harm: '|~C4,Eb4,G4|~C4,Eb4,F#4|~Ab3,C4,Eb4|~G3,B3,D4|',
+      drums: 'k.hsk.hsk.hsk.ss' },
+    boss8: { bpm: 172, loop: true,
+      lead: '|C5:2 C5:2 Eb5:2 C5:2 F#5:2 G5:2 Eb5:4|D5:2 Eb5:2 C5:2 B4:2 C5:8|Ab4:2 C5:2 Eb5:2 Ab5:2 G5:4 F#5:4|G5:2 F5:2 Eb5:2 D5:2 B4:8|',
+      bass: '|C2 C3 C2 C3 C2 C3 C2 C3|C2 C3 C2 C3 G1 G2 G1 G2|Ab1 Ab2 Ab1 Ab2 Ab1 Ab2 Ab1 Ab2|G1 G2 G1 G2 G1 G2 B1 D2|',
+      harm: '|~C4,Eb4,G4|~C4,Eb4,F#4|~Ab3,C4,Eb4|~G3,B3,D4|',
+      drums: 'kkhsk.hsk.hsk.ss' },
     witch: { bpm: 168, loop: true,
       lead: '|D6:2 A5:2 F5:2 A5:2 D6:2 E6:2 F6:4|E6:2 C6:2 A5:2 C6:2 E6:4 C#6:4|D6:2 Bb5:2 G5:2 Bb5:2 D6:2 F6:2 G6:4|F6:2 E6:2 D6:2 C#6:2 A5:8|Bb5:3 A5:1 G5:2 Bb5:2 D6:4 G6:4|A5:3 G5:1 F5:2 A5:2 C#6:4 E6:4|F6:2 E6:2 D6:2 A5:2 Bb5:2 G5:2 E5:2 C#5:2|D5:8 A5:4 D6:4|',
       bass: '|D2 D3 A2 D3 D2 D3 A2 D3|A2 A3 E3 A3 A2 A3 E3 A3|G2 G3 D3 G3 G2 G3 D3 G3|A2 A3 E3 A3 A2 A3 C#3 E3|G2 G3 D3 G3 G2 G3 D3 G3|A2 A3 E3 A3 A2 A3 E3 A3|Bb2 Bb3 F3 Bb3 A2 A3 E3 A3|D2 D3 A2 D3 D2:8|',
@@ -206,11 +217,11 @@ const Audio8 = (() => {
   }
   // 第一首開始播之後，背景依序把其他配樂抓進快取 → 之後換關、魔王戰音樂馬上就有
   function prefetchSongs() {
-    (async () => { for (const n of ['stage1', 'boss', 'stage2', 'stage3', 'stage4', 'witch', 'ending', 'title']) { try { await fetch('music-' + n + '.mp3?v=11212022'); } catch (e) {} } })();
+    (async () => { for (const n of ['stage1', 'boss', 'stage2', 'stage3', 'stage4', 'witch', 'ending', 'title']) { try { await fetch('music-' + n + '.mp3?v=11230646'); } catch (e) {} } })();
   }
   function unlockBgm() {
     const el = bgmEl(); if (el._unlocked) return; el._unlocked = true;
-    if (!el.src) { el.src = 'music-' + 'title' + '.mp3?v=11212022'; bgmName = 'title'; }
+    if (!el.src) { el.src = 'music-' + 'title' + '.mp3?v=11230646'; bgmName = 'title'; }
     el.muted = true; const p = el.play();
     const done = () => { if (ext.el !== el) el.pause(); el.muted = muted; };
     if (p && p.then) p.then(done, done); else done();
@@ -219,13 +230,13 @@ const Audio8 = (() => {
   function oneShot(name) {
     if (!ac) init();
     stopMusic(); curName = name;
-    const el = bgmEl(); el.loop = false; el.src = 'music-' + name + '.mp3?v=11212022'; bgmName = name;
+    const el = bgmEl(); el.loop = false; el.src = 'music-' + name + '.mp3?v=11230646'; bgmName = name;
     ext.el = el; el.muted = muted; el.volume = 0.9; el.currentTime = 0; el.play().catch(() => {});
   }
   function playEl(name) {
     const el = bgmEl(); el.loop = true;
     if (cur) { if (timer) clearInterval(timer); timer = null; cur = null; }
-    if (bgmName !== name) { el.src = 'music-' + name + '.mp3?v=11212022'; bgmName = name; } else el.currentTime = 0;
+    if (bgmName !== name) { el.src = 'music-' + name + '.mp3?v=11230646'; bgmName = name; } else el.currentTime = 0;
     ext.el = el; el.muted = muted; el.volume = 0; el.play().catch(() => {});
     clearInterval(fadeT); let v = 0; fadeT = setInterval(() => { v = Math.min(0.6, v + 0.06); el.volume = v; if (v >= 0.6 || ext.el !== el) clearInterval(fadeT); }, 40);
   }
@@ -308,7 +319,7 @@ const Audio8 = (() => {
   const SFX_VOL = { shoot: 1, victory: 1, getweapon: 1, cursor: 1, pop: 0.7, heal: 0.7, blip: 0.5, step: 0.5, explode: 0.6, dash: 0.6, clink: 0.6, magic: 0.7 };
   function loadExtSfx() {
     if (location.protocol === 'file:') return;
-    fetch('sfx-list.json?v=11212022').then(r => r.ok ? r.json() : []).catch(() => []).then(list => list.forEach(n => fetch('sfx-' + n + '.mp3?v=11212022').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && ac.decodeAudioData(b)).then(buf => { if (buf) ext.sfx[n] = buf; }).catch(() => {})));
+    fetch('sfx-list.json?v=11230646').then(r => r.ok ? r.json() : []).catch(() => []).then(list => list.forEach(n => fetch('sfx-' + n + '.mp3?v=11230646').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && ac.decodeAudioData(b)).then(buf => { if (buf) ext.sfx[n] = buf; }).catch(() => {})));
   }
   const playing = {};
   function stopSfx(...names) { for (const n of names) { for (const s of playing[n] || []) { try { s.stop(); } catch (e) {} } playing[n] = []; } }

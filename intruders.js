@@ -10,6 +10,8 @@ const HERO_NAME = { m: '中央山脈超人', s: '針筒超人' };
 const playerName = () => G.char === 'witch' ? '豪鬼主任' : '小編';
 G.intruderTimer = 900;
 
+// 被病毒怪人感染：3 秒動作變慢（針筒超人來打一針就好）
+function infectPlayer() { const P = G.player; if (!P.sickT) floatText(P.cx, P.y - 12, '中毒了！動作變慢…', '#b6ff6a', true); P.sickT = 180; Audio8.sfx('squish'); }
 function endIntruder() { G.intruder = null; Audio8.stopSfx('siren', 'gas'); }
 function floorAt(x, fallback) {
   const tx = Math.floor(x / TS);
@@ -72,16 +74,24 @@ function updateIntruder() {
       if ((I.dir > 0 && I.x > G.camX + VW + 60) || (I.dir < 0 && I.x + I.w < G.camX - 60)) endIntruder();
     }
   } else if (I.kind === 'virus') {
-    // 病毒怪人：一跳一跳地走過去，邊走邊朝主角吐病毒彈
+    // 病毒怪人：特色＝「繁殖」＋「感染」
+    //  ‧走一段就停下來打噴嚏：病毒彈落地會變成小病毒（會越生越多，最多 3 隻）
+    //  ‧被病毒彈或牠本人碰到 → 中毒 3 秒：動作變慢（被針筒超人打一針就解毒）
     if (I.state === 'go') {
       I.face = P.cx < cx ? -1 : 1;
-      const ground = floorAt(cx, I.y + I.h);
+      const ground = floorAt(cx, I.y + I.h), cyc = I.t % 150;
       I.vy += 0.3; I.y += I.vy; I.air = true;
-      if (I.y + I.h >= ground) { I.y = ground - I.h; I.vy = 0; I.air = false; if (I.t % 60 === 0) { I.vy = -4; Audio8.sfx('land', 0.2); } }
-      I.x += I.dir * 1.2;
-      if (I.t % 90 === 45) { G.eshots.push(new EShot('germ', cx + I.face * 12, I.y + 16, I.face * clamp(Math.abs(P.cx - cx) / 45, 1.2, 4), -4, { dmg: 2 })); Audio8.sfx('throw'); I.spitT = 10; I.say = D.lines[1]; I.sayT = 70; }
+      if (I.y + I.h >= ground) { I.y = ground - I.h; I.vy = 0; I.air = false; if (cyc < 90 && I.t % 45 === 0) { I.vy = -4; Audio8.sfx('land', 0.2); } }
+      if (cyc < 90) I.x += I.dir * 1.2; // 走
+      else { // 停下來打噴嚏（先鼓起來，再一次噴 3 顆）
+        if (cyc === 90) { I.say = '哈…哈…哈啾——！'; I.sayT = 60; Audio8.sfx('charge1', 0.1); }
+        I.puffT = cyc < 118 ? 1 : 0;
+        if (cyc === 118) { Audio8.sfx('gas'); I.spitT = 14; FX('venom', cx + I.face * 14, I.y + 18, { opts: { size: 0.5 }, life: 0.6 });
+          const near = G.enemies.filter(e => e.code === 'x' && !e.dead && Math.abs(e.x - cx) < VW).length;
+          for (let i = 0; i < 3; i++) G.eshots.push(new EShot('germ', cx + I.face * 12, I.y + 16, I.face * (1.2 + i * 1.1), -3.6 - i * 0.4, { dmg: 2, infect: true, spawn: near + i < 3 })); }
+      }
       if (I.spitT) I.spitT--;
-      if (overlap(I, P)) P.hurt(3, cx, '被病毒撞到！');
+      if (overlap(I, P) && P.hurt(3, cx, '被病毒撞到！')) infectPlayer();
       if ((I.dir > 0 && I.x > G.camX + VW + 60) || (I.dir < 0 && I.x + I.w < G.camX - 60) || I.t > 1200) endIntruder();
     }
   } else {
@@ -125,6 +135,7 @@ function updateHeroStrike(I) {
       h.hit = true; h.t = 0;
       const win = I.kind === 'virus' && h.id === 's' ? '針筒超人：打一針，病毒退散！' : I.kind === 'typhoon' && h.id === 'm' ? '中央山脈超人：山脈擋住颱風！' : HERO_NAME[h.id] + '：滾開！別妨礙' + playerName() + '！';
       knockOut(I, win); I.vx = Math.sign(tx - (h.x - h.from * 20)) * 5 || 5; G.flash = 4;
+      if (h.id === 's' && G.player.sickT) { G.player.sickT = 1; floatText(G.player.cx, G.player.y - 20, '順便幫你打一針，解毒！', '#9ff3ff'); } // 針筒超人解毒
     }
   } else if (h.blown) { h.x += (h.x < tx ? -1 : 1) * 5; h.y -= 2.5; h.spin = (h.spin || 0) + 0.4; if (h.t > 70) I.hero = null; }
   else { h.x += -h.from * 4; h.y -= 2; if (h.t > 60) I.hero = null; }
@@ -135,7 +146,7 @@ function drawIntruder(cam) {
   const cx = I.x + I.w / 2 - cam, feet = I.y + I.h + 1;
   let k;
   if (I.kind === 'rhino') k = I.state === 'ko' ? 'vr_ko' : I.state === 'go' ? 'vr_run' + (Math.floor(I.t / 4) % 4) : 'vr_idle';
-  else if (I.kind === 'virus') k = I.state === 'ko' ? 'vb_ko0' : I.spitT ? 'vb_spit' : I.air ? 'vb_jump' : I.state === 'go' ? 'vb_walk' + (Math.floor(I.t / 6) % 4) : 'vb_idle0';
+  else if (I.kind === 'virus') k = I.state === 'ko' ? 'vb_ko0' : I.spitT ? 'vb_spit' : I.puffT ? 'vb_puff' : I.air ? 'vb_jump' : I.state === 'go' ? 'vb_walk' + (Math.floor(I.t / 6) % 4) : 'vb_idle0';
   else k = I.state === 'ko' ? 'vt_ko' : I.blow ? 'vt_blow' : I.sayT > 0 && I.t % 120 > 60 ? 'vt_laugh' : 'vt_fly' + (Math.floor(I.t / 10) % 2);
   const face = I.kind === 'rhino' ? I.dir : I.kind === 'virus' ? (I.face || I.dir) : (I.face || -I.dir);
   ctx.save();

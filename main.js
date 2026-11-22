@@ -43,7 +43,7 @@ addEventListener('resize', resize); resize();
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
 const LOAD = { n: 0, done: 0 }; // 讀取進度（成功或失敗都算完成，不會卡住）
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { IMG[k] = im; LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'gpt-' + k + '.jpg?v=11230002'; });
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { IMG[k] = im; LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'gpt-' + k + '.jpg?v=11230646'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
 // 去紫邊：只處理貼著透明區、而且「非常接近洋紅」的邊緣像素（不會吃掉粉紅、紫色的衣服頭髮）
@@ -78,7 +78,7 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'ui-' + k + '.webp?v=11230002'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'ui-' + k + '.webp?v=11230646'; });
 // 全部讀完（人物圖＋介面圖＋背景）＝ 1；超過 25 秒也直接放行
 const LOAD_T0 = performance.now();
 function loadProgress() { const p = SPR.progress * 0.6 + (LOAD.n ? LOAD.done / LOAD.n : 1) * 0.4; return performance.now() - LOAD_T0 > 25000 ? 1 : Math.min(1, p); }
@@ -90,7 +90,7 @@ const LZ = { n: 0, done: 0, started: false, t0: 0 };
 function startLoop2Load() {
   if (LZ.started) return; LZ.started = true; LZ.t0 = performance.now();
   SPR.loadLazy();
-  LOOP2_IMG.forEach(k => { const im = new Image(); LZ.n++; im.onload = () => { IMG[k] = im; LZ.done++; }; im.onerror = () => LZ.done++; im.src = 'gpt-' + k + '.jpg?v=11230002'; });
+  LOOP2_IMG.forEach(k => { const im = new Image(); LZ.n++; im.onload = () => { IMG[k] = im; LZ.done++; }; im.onerror = () => LZ.done++; im.src = 'gpt-' + k + '.jpg?v=11230646'; });
 }
 function loop2Progress() { if (!LZ.started) return 0; if (performance.now() - LZ.t0 > 30000) return 1; return Math.min(1, SPR.lazyProgress * 0.7 + (LZ.n ? LZ.done / LZ.n : 1) * 0.3); }
 function enterLoop2() {
@@ -158,10 +158,10 @@ const MIDIMG = {}, PITIMG = {}, SELHEAD = [];
   let segs = [], s = -1; col.forEach((v, i) => { if (v && s < 0) s = i; if (!v && s >= 0) { segs.push([s, i]); s = -1; } }); if (s >= 0) segs.push([s, c.width]);
   segs = segs.filter(g => g[1] - g[0] > c.width / 40).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 5).sort((a, b) => a[0] - b[0]);
   for (const [a, b] of segs) { let top = c.height, bot = 0; for (let j = 0; j < c.height; j++) for (let i = a; i < b; i += 2) if (d[(j * c.width + i) * 4 + 3] > 0) { if (j < top) top = j; bot = j; break; } const o = document.createElement('canvas'); o.width = b - a; o.height = bot - top + 1; o.getContext('2d').drawImage(c, a, top, b - a, bot - top + 1, 0, 0, b - a, bot - top + 1); SELHEAD.push(o); }
-} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11230002'; }
+} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11230646'; }
 [1, 2, 3, 4].forEach(n => {
-  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11230002';
-  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11230002';
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11230646';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11230646';
 });
 
 // ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
@@ -349,8 +349,7 @@ function stepScript() {
   }
 }
 function* talk(lines) {
-  for (const l0 of lines) {
-    const l = forPlayer(l0); // 看選的英雄：選豪鬼主任就由她來講
+  for (const l of forPlayerLines(lines)) { // 看選的英雄：選豪鬼主任就由她來講（她還會多講幾句）
     const [who, name, text] = l.length === 3 ? l : [l[0] === '小編' ? 'hero' : l[0] === '小學生' ? 'kid' : 'chief', l[0], l[1]];
     G.dialog = { who, name, text, shown: 0, t: 0 };
     yield () => G.dialog === null;
@@ -461,7 +460,7 @@ function goTitle() {
 function goSelect(loop) {
   if (loop) G.loop = loop; else G.loop = G.stage >= 5 ? 2 : (G.loop || 1);
   G.char = G.loop === 2 && save.char === 'witch' ? 'witch' : 'hero';
-  const o = loopOff(); G.selSayI = -1; G.charSay = null; G.charSwapT = null;
+  const o = loopOff(); G.selSayI = -1; G.charSay = null; G.charSwapT = null; G.selLock = 40;
   G.mode = 'select'; syncAbilities(); G.sel = [1, 2, 3].every(i => save.cleared.includes(o + i)) ? 3 : [0, 1, 2].find(i => !save.cleared.includes(o + i + 1)) || 0; Audio8.music('title'); if (window.VFX) VFX.clear();
 }
 function* storyIntro() {
@@ -550,6 +549,7 @@ G.onBossDefeated = (b) => {
 };
 function* endingSeq() {
   G.mode = 'ending'; G.endT = 0; Audio8.music('ending'); if (window.VFX) VFX.clear();
+  if (G.stage === 4) startLoop2Load(); // 一周目結局：先在背景載二周目的圖，成績後的預告要用
   yield 60;
   yield* talk(G.stage === 8 ? ENDING2 : ENDING);
   G.mode = 'slogan'; G.slT = 0; // 宣導標語
@@ -646,8 +646,66 @@ function openCert() {
   ['touchstart', 'touchend', 'pointerdown'].forEach(n => d.addEventListener(n, e => e.stopPropagation(), { passive: true }));
   inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') d.querySelector('#cMake').click(); });
   d.querySelector('#cMake').onclick = () => { certName = inp.value.trim(); try { localStorage.setItem('pbh_name', certName); } catch (e) {} certCv = makeCert(certName); Audio8.sfx('select'); inp.blur(); };
-  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11230002'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
-  d.querySelector('#cBack').onclick = () => { d.remove(); certUI = null; goTitle(); };
+  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11230646'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
+  d.querySelector('#cBack').onclick = () => { d.remove(); certUI = null; if (G.stage === 4) openTeaser(); else goTitle(); };
+}
+// ---------- 一周目通關後：二周目預告（新的怪人＋新的英雄登場？！）----------
+function openTeaser() { G.mode = 'teaser'; G.tzT = 0; startLoop2Load(); Audio8.music('stage8'); if (window.VFX) VFX.clear(); }
+const TZ_MON = [['vb_idle0', 'p_virus'], ['vt_fly0', 'p_typhoon'], ['vr_idle', 'p_rhino']];
+function tzSprite(k, x, y, hgt, dark, glow) { // 以腳底中心 (x,y) 畫出遊戲人物圖，高 hgt（遊戲座標）
+  const f = SPR.f[k]; if (!f || !f.img) return false;
+  const s = hgt / f.h, w = f.w * s;
+  sctx.save(); if (glow) { sctx.shadowColor = glow; sctx.shadowBlur = 14 * K; } if (dark) sctx.filter = 'brightness(0)';
+  sctx.drawImage(f.img, (x - w / 2) * K, (y - hgt) * K, w * K, hgt * K); sctx.restore(); return true;
+}
+function drawTeaser() {
+  const t = G.tzT, bk = k => { k = clamp(k, 0, 1); return Math.max(0.001, 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2)); };
+  const g = sctx.createLinearGradient(0, 0, 0, screen.height); g.addColorStop(0, '#1a0830'); g.addColorStop(1, '#040208'); sctx.fillStyle = g; sctx.fillRect(0, 0, screen.width, screen.height);
+  // 紫色放射光
+  sctx.save(); sctx.translate(200 * K, 120 * K); sctx.rotate(t * 0.004); sctx.fillStyle = 'rgba(150,60,220,0.10)';
+  for (let i = 0; i < 14; i++) { sctx.rotate(Math.PI / 7); sctx.beginPath(); sctx.moveTo(0, 0); sctx.lineTo(420 * K, -26 * K); sctx.lineTo(420 * K, 26 * K); sctx.fill(); } sctx.restore();
+  if ((t > 40 && t < 48) || (t > 110 && t < 116) || (t > 330 && t < 338) || (t > 560 && t < 568)) { sctx.fillStyle = 'rgba(220,180,255,0.45)'; sctx.fillRect(0, 0, screen.width, screen.height); } // 閃光
+  // 1) 咦？……什麼？！
+  if (t < 110) {
+    if (t < 40) txt('……咦？', 200, 96, 14, '#cfa8ff', 'center');
+    else { const sh = t < 80 ? (Math.random() - 0.5) * 5 : 0, s = bk((t - 40) / 18); txt('什麼？！', 200 + sh, 92 - 10 * s, 14 + 18 * s, '#ffffff', 'center', '#ff2a5a'); }
+    return;
+  }
+  // 2) 新的怪人登場？！（剪影，不揭曉長相）
+  const monY = 176;
+  if (t < 560) {
+    if (t < 330) txt('新的怪人登場？！', 200, 14, 18, '#ff5fb8', 'center', '#ffffff');
+    TZ_MON.forEach(([k, pk], i) => { const a = t - 120 - i * 24; if (a < 0) return; const s = bk(a / 20), x = 70 + i * 72, h = 64 * s;
+      sctx.fillStyle = 'rgba(90,30,150,0.45)'; sctx.beginPath(); sctx.ellipse(x * K, (monY - 30) * K, 34 * K * s, 40 * K * s, 0, 0, 7); sctx.fill();
+      if (!tzSprite(k, x, monY, h, true, '#c08aff')) { sctx.fillStyle = '#000'; sctx.fillRect((x - 16 * s) * K, (monY - h) * K, 32 * s * K, h * K); }
+      txt('？', x, monY - 46 * s, 22 * s, '#ff5fb8', 'center', '#ffffff'); });
+    // 最大的黑影：怪獸社長（只看得到發光的眼睛）
+    const a = t - 210; if (a > 0) { const s = bk(a / 30), x = 330;
+      sctx.fillStyle = 'rgba(0,0,0,0.6)'; sctx.beginPath(); sctx.ellipse(x * K, (monY - 44) * K, 46 * K * s, 62 * K * s, 0, 0, 7); sctx.fill();
+      if (!tzSprite('sh_stand', x, monY + 4, 104 * s, true, '#8a2be2')) { sctx.fillStyle = '#000'; sctx.fillRect((x - 20) * K, (monY - 100 * s) * K, 40 * K, 100 * s * K); }
+      if (a > 30 && (t % 90) < 80) { sctx.fillStyle = '#ffffff'; sctx.fillRect((x + 3) * K, (monY - 88 * s) * K, 3 * K, 2 * K); sctx.fillRect((x + 10) * K, (monY - 88 * s) * K, 3 * K, 2 * K); }
+      if (a > 40 && t < 330) txt('「呵呵呵……城市越髒，我賺越多。」', 200, 196, 9, '#cfa8ff', 'center'); }
+  }
+  // 3) 新的英雄登場？！（豪鬼主任揭曉）
+  if (t >= 330 && t < 560) {
+    const a = t - 330, k = clamp(a / 24, 0, 1), x = 200 + (1 - (1 - Math.pow(1 - k, 3))) * 260;
+    sctx.fillStyle = 'rgba(8,4,18,0.72)'; sctx.fillRect(0, 34 * K, screen.width, 150 * K);
+    sctx.fillStyle = 'rgba(255,154,230,0.25)'; sctx.beginPath(); sctx.ellipse(x * K, 120 * K, 60 * K, 64 * K, 0, 0, 7); sctx.fill();
+    if (!tzSprite('wp_win', x, 170, 96, false, '#ff9ae6')) { const im = IMG.p_witch; if (im) sctx.drawImage(im, (x - 50) * K, 70 * K, 100 * K, 100 * K * im.height / im.width); }
+    if (a > 20) { const s = bk((a - 20) / 16); txt('新的英雄登場？！', 200, 40 - 6 * (1 - s), 18 * s + 0.1, '#7ff3ff', 'center', '#16111f'); }
+    if (a > 50) txt('豪鬼主任 加入戰鬥！', 200, 64, 12, '#ff9ae6', 'center');
+    if (a > 90) { box(242, 92, 148, 22, 'rgba(10,12,28,0.92)', '#ff9ae6'); txt('這次換我來大掃除！', 316, 98, 9, '#ffffff', 'center', null); }
+    return;
+  }
+  // 4) 二周目解鎖
+  if (t >= 560) {
+    const a = t - 560, s = bk(a / 22);
+    sctx.save(); sctx.translate(200 * K, 84 * K); sctx.rotate(-0.05); sctx.scale(s || 0.01, s || 0.01); sctx.translate(-200 * K, -84 * K);
+    txt('二周目', 200, 50, 40, '#ff5fb8', 'center', '#ffffff'); txt('解　鎖！', 200, 100, 22, '#ffe14a', 'center', '#3a0a40'); sctx.restore();
+    TZ_MON.forEach(([k], i) => tzSprite(k, 40 + i * 30, 214, 34, true, '#c08aff')); tzSprite('sh_stand', 140, 216, 44, true, '#8a2be2'); tzSprite('wp_stand', 360, 214, 44, false, '#ff9ae6');
+    if (a > 40) txt('回到標題畫面，選「★ 二周目」開始挑戰！', 200, 150, 10, '#ffffff', 'center');
+    if (a > 70 && (t % 60) < 42) txt('— 按任意鍵 —', 200, 172, 9, '#cfa8ff', 'center');
+  }
 }
 function drawCertScreen() {
   sctx.fillStyle = '#1b2440'; sctx.fillRect(0, 0, screen.width, screen.height);
@@ -797,6 +855,7 @@ function update() {
     }
     case 'help': if (I.pressed.ok) { G.mode = 'title'; Audio8.sfx('cursor'); } break;
     case 'select': {
+      if (G.selLock > 0) { if (held.jump || held.shoot || held.start) G.selLock = Math.max(G.selLock, 30); else G.selLock--; break; } // 剛進選關畫面：要先放開確定鍵、再停一下，才可以選關（不會被上一個畫面的按鍵直接開下一關）
       const o = loopOff();
       if (G.sel < 3) {
         if (I.pressed.left) { G.sel = (G.sel + 2) % 3; Audio8.sfx('cursor'); }
@@ -846,6 +905,7 @@ function update() {
     case 'ending': G.endT++; break;
     case 'slogan': G.slT++; G.endT++; break;
     case 'credits': G.credT++; break;
+    case 'teaser': G.tzT++; if ((G.tzT > 630 && G.input.pressed.ok) || G.tzT > 1500) goTitle(); else if (G.tzT > 40 && G.tzT < 560 && G.input.pressed.ok) G.tzT = 560; break; // 按鍵可跳到「二周目解鎖」
   }
 }
 function titleOptions() {
@@ -1177,10 +1237,14 @@ function drawWorld() {
       continue; }
     if (p.meteor) { // 流星：橘紅火球＋拖尾，加速落下
       const t = 1 - p.life / p.max, e = t * t, sx = p.x - cam + (1 - e) * 60, sy = -30 + (p.y + 30) * e, R = 7 * p.k;
-      for (let i = 6; i >= 1; i--) { ctx.globalAlpha = 0.12 * (7 - i); ctx.fillStyle = i % 2 ? '#ff7a24' : '#ffd23f'; const tx = sx + i * 6, ty = sy - i * 9; ctx.beginPath(); ctx.arc(tx, ty, R * (1 - i * 0.1), 0, 7); ctx.fill(); }
-      ctx.globalAlpha = 1; ctx.fillStyle = '#16111f'; ctx.beginPath(); ctx.arc(sx, sy, R + 2, 0, 7); ctx.fill();
-      ctx.fillStyle = '#ff5a1f'; ctx.beginPath(); ctx.arc(sx, sy, R, 0, 7); ctx.fill(); ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(sx - R * 0.25, sy - R * 0.25, R * 0.6, 0, 7); ctx.fill(); ctx.fillStyle = '#fff8d0'; ctx.fillRect(Math.round(sx - R * 0.45), Math.round(sy - R * 0.45), 3, 3);
-      if (p.life === 1) { FX('explode', p.x, p.y - 6, { opts: { size: 1.1 } }); FX('shock', p.x, p.y, { opts: { size: 1 } }); }
+      const mc = p.dark ? ['#3a3540', '#6e6a74', '#000000', '#24212a', '#55505c', '#9a96a0'] : ['#ff7a24', '#ffd23f', '#16111f', '#ff5a1f', '#ffd23f', '#fff8d0']; // 黑暗隕石：黑灰色
+      for (let i = 6; i >= 1; i--) { ctx.globalAlpha = (p.dark ? 0.16 : 0.12) * (7 - i); ctx.fillStyle = i % 2 ? mc[0] : mc[1]; const tx = sx + i * 6, ty = sy - i * 9; ctx.beginPath(); ctx.arc(tx, ty, R * (1 - i * 0.1), 0, 7); ctx.fill(); }
+      ctx.globalAlpha = 1; ctx.fillStyle = mc[2]; ctx.beginPath(); ctx.arc(sx, sy, R + 2, 0, 7); ctx.fill();
+      ctx.fillStyle = mc[3]; ctx.beginPath(); ctx.arc(sx, sy, R, 0, 7); ctx.fill(); ctx.fillStyle = mc[4]; ctx.beginPath(); ctx.arc(sx - R * 0.25, sy - R * 0.25, R * 0.6, 0, 7); ctx.fill(); ctx.fillStyle = mc[5]; ctx.fillRect(Math.round(sx - R * 0.45), Math.round(sy - R * 0.45), 3, 3);
+      if (p.life === 1) {
+        if (p.dark) { for (let j = 0; j < 9; j++) { const a = j / 9 * 6.28; cloud(p.x, p.y - 6, Math.cos(a) * 1.6, Math.sin(a) * 1.1 - 0.4, 4, 14, 30, j % 3 ? '#2a2630' : '#77727e'); } cloud(p.x, p.y - 6, 0, 0, 6, 20, 10, '#111014'); FX('dust', p.x, p.y, { opts: { size: 1 } }); }
+        else { FX('explode', p.x, p.y - 6, { opts: { size: 1.1 } }); FX('shock', p.x, p.y, { opts: { size: 1 } }); }
+      }
       continue; }
     if (p.dot) { ctx.globalAlpha = Math.min(1, p.life / 6); ctx.fillStyle = p.c; ctx.fillRect(p.x - cam - 1.5, p.y - 0.5, 3, 1); ctx.fillRect(p.x - cam - 0.5, p.y - 1.5, 1, 3); ctx.globalAlpha *= 0.35; ctx.fillRect(p.x - cam - 2, p.y - 2, 4, 4); continue; }
     ctx.fillRect(Math.round(p.x - cam - s / 2), Math.round(p.y - s / 2), Math.ceil(s), Math.ceil(s));
@@ -1588,6 +1652,7 @@ function render() {
   if (m === 'credits') return drawCredits();
   if (m === 'slogan') return drawSlogan();
   if (m === 'cert') return drawCertScreen();
+  if (m === 'teaser') return drawTeaser();
   if (m === 'ending' || m === 'story') {
     if (m === 'ending') drawEnding();
     else { sctx.fillStyle = '#0b0d1e'; sctx.fillRect(0, 0, screen.width, screen.height); const im = IMG.bg1; if (im) { sctx.globalAlpha = 0.55; sctx.drawImage(im, 0, -14 * K, im.width * 250 / im.height * K, 250 * K); sctx.globalAlpha = 1; } txt('序章', 200, 20, 18, '#ffe36a', 'center'); txt('某個城市的社區，最近到處都是狗大便……', 200, 50, 10, '#fff', 'center'); }

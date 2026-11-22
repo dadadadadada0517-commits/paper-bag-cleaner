@@ -25,6 +25,7 @@ const SPR = (() => {
     grunt: { lazy: true, feet: /^g_/, rows: [['g_run0', 'g_run1', 'g_run2', 'g_run3', 'g_punch0', 'g_punch1', 'g_ko', 'g_salute']], h: [[22, 22, 22, 22, 22, 22, { w: 30 }, 22]] }, // 小怪在遊戲裡會再放大 1.5 倍
     vminion: { lazy: true, rows: [['vm_hop0', 'vm_hop1', 'vm_roll0', 'vm_roll1', 'vm_fly', 'vm_pop']], h: 12 },
     witch_p: { lazy: true, feet: /^wp_/, rows: [['wp_stand', 'wp_run0', 'wp_run1', 'wp_run2', 'wp_shoot', 'wp_jump'], ['wp_hurt', 'wp_climb', 'wp_charge', 'wp_win', 'wp_dash', 'wp_wave']], h: 44 },
+    witch_run: { lazy: true, feet: /^wp_/, rows: [['wp_r0', 'wp_r1', 'wp_r2', 'wp_r3', 'wp_r4', 'wp_r5']], h: 44 }, // 豪鬼主任 6 格跑步（直立不蹲）
     boss_hurt: { feet: /hurt/, rows: [['a_hurt', 'l_hurt', 'k_hurt']], h: [[44, 48, 72]] }, // 關主被打到的姿勢（GPT）
     witch_hurt: { rows: [['w_hit', 'w_stagger', 'w_kneel']], h: 44, left: true },
     abo: { feet: /^a_(t|stand|sorry)/, rows: [['a_stand', ...R8('a_walk')], ['a_t0', 'a_t1', 'a_t2', 'a_j0', 'a_j1', 'a_sorry0', 'a_sorry1']], h: 44 },
@@ -164,7 +165,7 @@ const SPR = (() => {
       const img = new Image();
       img.onload = () => { try { cut(img, spec); } catch (e) { console.warn('sheet', file, e); } lzLoaded++; };
       img.onerror = () => { lzLoaded++; };
-      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11222331';
+      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11230646';
     }
   }
   function load() {
@@ -180,7 +181,7 @@ const SPR = (() => {
         if (file === 'dogs') Object.keys(f).filter(n => n.startsWith('d_')).forEach(n => recolor(n, 'W' + n, (r, g, b) => { const l = (r + g + b) / 3; return [Math.min(255, l * 0.5 + 125), Math.min(255, l * 0.5 + 123), Math.min(255, l * 0.5 + 130)]; }));
       };
       img.onerror = () => { loaded++; };
-      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11222331';
+      img.src = (spec.dir || 'sheets') + '-' + file + '.webp?v=11230646';
     }
   }
   function has(n) { return !!f[n]; }

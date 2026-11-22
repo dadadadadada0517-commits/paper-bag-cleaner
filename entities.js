@@ -39,7 +39,7 @@ function FX(name, x, y, o = {}) {
     case 'warn':
       G.parts.push({ x, y, vx: 0, vy: 0, life: 70, max: 70, c: '#ff303e', s: 1, g: 0, warn: true, r0: clamp(14 * k, 14, 38) }); return null;
     case 'meteor': // 自繪像素流星：從天而降，落地爆炸
-      { const L = o.fall || 38; G.parts.push({ x, y, vx: 0, vy: 0, life: L, max: L, c: '#ff7a24', s: 1, g: 0, meteor: true, k: Math.max(1.6, k) }); } return null;
+      { const L = o.fall || 38; G.parts.push({ x, y, vx: 0, vy: 0, life: L, max: L, c: '#ff7a24', s: 1, g: 0, meteor: true, dark: !!o.dark, k: Math.max(1.6, k) }); } return null;
     case 'thunder': case 'zap':
       cloud(x, y, 0, 0, 3, 12 * k, 8, '#fff6c0'); sparks(x, y, col, 12, 3, 0); return null;
     case 'hole': case 'gate':
@@ -171,6 +171,11 @@ class Player {
       FX('dust', this.cx - this.face * 18, this.y + this.h, { opts: { size: 0.3 } });
     }
     let speed = 1.5;
+    if (this.sickT > 0) { // 被病毒感染：動作變慢、身上冒綠色泡泡
+      this.sickT--; speed = 0.9;
+      if (this.anim % 8 === 0) G.parts.push({ x: this.cx + rnd(-6, 6), y: this.y + rnd(0, 10), vx: rnd(-0.2, 0.2), vy: -0.6, life: 30, max: 30, c: this.anim % 16 ? '#8fbf3a' : '#b6ff6a', s: 2, g: 0, dot: true });
+      if (this.sickT === 0) floatText(this.cx, this.y - 10, '病毒退散，恢復了！', '#9ff3ff');
+    }
     if (I.held.left || I.held.right || I.held.jump || I.held.shoot || !this.onGround) this.idleT = 0; else this.idleT++;
     this.runT = (I.held.left || I.held.right) && this.onGround ? (this.runT || 0) + 1 : 0;
     if (this.dashT > 0) {
@@ -295,7 +300,7 @@ class Player {
     if (!this.onGround && !this.climbing) return 'wp_dash'; // 空中一律騎掃把飛行（集氣靠閃光表現，不會變成蹲姿）
     if (k === 'h_dash') return 'wp_dash';
     if (this.crouch) return 'wp_charge'; // 只有真的按↓蹲下才用蹲姿
-    if (k.startsWith('h_run')) return 'wp_run' + (Math.floor(this.anim / 5) % 3); // 走路時集氣也照樣跑（集氣靠閃光表現）
+    if (k.startsWith('h_run')) return SPR.has('wp_r0') ? 'wp_r' + (Math.floor(this.anim / 4) % 6) : 'wp_run' + [0, 2][Math.floor(this.anim / 6) % 2]; // 6 格跑步循環（GPT）；走路時集氣也照樣跑
     if (k === 'h_charge' || this.charge >= 22) return 'wp_shoot';
     if (k === 'h_shoot') return 'wp_shoot';
     if (k.startsWith('h_j')) return 'wp_jump';
@@ -815,9 +820,10 @@ function drawRubble(ctx, x, y, k, t) {
 class EShot {
   constructor(type, x, y, vx, vy, o = {}) {
     Object.assign(this, { type, vx, vy, t: 0, grav: 0, dmg: 2, ...o }); if (this.dmg > 2) this.dmg -= 1;
-    const sz = { bag: [9, 9], ball: [8, 8], star: [7, 7], bigstar: [9, 9], paper: [11, 13], handbag: [13, 11], gas: [16, 16], rain: [10, 8], wave: [14, 12], chi: [12, 9], note: [8, 8], germ: [10, 10], orb: [12, 12], rock: [12, 11], gust: [18, 22], can: [10, 12] }[type] || [8, 8];
+    const sz = { bag: [9, 9], ball: [8, 8], star: [7, 7], bigstar: [9, 9], paper: [11, 13], handbag: [13, 11], gas: [16, 16], rain: [10, 8], wave: [14, 12], chi: [12, 9], note: [8, 8], germ: [10, 10], orb: [12, 12], rock: [12, 11], gust: [18, 22], can: [10, 12], bigpoop: [18, 15], bagmon: [12, 12] }[type] || [8, 8];
     this.w = sz[0]; this.h = sz[1]; this.x = x - this.w / 2; this.y = y - this.h / 2;
-    if (type === 'bag' || type === 'ball' || type === 'rain' || type === 'germ' || type === 'rock' || type === 'can') this.grav = o.grav != null ? o.grav : 0.18;
+    if (type === 'bag' || type === 'ball' || type === 'rain' || type === 'germ' || type === 'rock' || type === 'can' || type === 'bigpoop' || type === 'bagmon') this.grav = o.grav != null ? o.grav : 0.18;
+    if (type === 'bigpoop') this.hp = 3;
     if (type === 'chi') this.grav = 0.25;
   }
   get cx() { return this.x + this.w / 2; }
@@ -836,22 +842,33 @@ class EShot {
       if (moveBody(ob)) this.vx *= -1; this.x = ob.x; this.y = ob.y; this.vy = ob.vy;
       if (ob.onGround) this.vy = -2.2;
       if (this.t > 260) { this.dead = true; FX('puff', this.cx, this.y); }
+    } else if (this.landed) { // 落地的超大臭便便：留在地上當陷阱，踩到會受傷，用水沖 3 下才會消失
+      if (this.t % 10 === 0) G.parts.push({ x: this.cx + rnd(-6, 6), y: this.y, vx: 0, vy: -0.5, life: 26, max: 26, c: '#a6c24a', s: 2, g: 0 });
+      for (const b of G.bullets) if (!b.dead && overlap(this, b)) { if (!b.big) b.dead = true; this.hp -= b.big ? 3 : 1; this.hitT = 6; Audio8.sfx('squish'); FX('wave', this.cx, this.y + this.h, { opts: { size: 0.3 } }); }
+      if (this.hitT) this.hitT--;
+      if (this.hp <= 0) { this.dead = true; FX('puff', this.cx, this.y + 6, { opts: { size: 0.6, color: '#cfe8ff' } }); floatText(this.cx, this.y - 8, '臭便便沖乾淨！', '#9ff3ff'); return; }
+      if (this.t > 900) { this.dead = true; FX('venom', this.cx, this.y + this.h, { opts: { size: 0.4 } }); return; }
     } else {
       this.vy += this.grav; this.x += this.vx; this.y += this.vy;
-      if (this.grav && isSolid(Math.floor(this.cx / TS), Math.floor((this.y + this.h) / TS)) && this.vy > 0) {
+      if (this.grav && (this.type === 'bigpoop' || this.type === 'bagmon') && isSolid(Math.floor(this.cx / TS), Math.floor((this.y + this.h) / TS)) && this.vy > 0) {
+        const gy = Math.floor((this.y + this.h) / TS) * TS;
+        if (this.type === 'bigpoop' && G.eshots.filter(e => e.landed && !e.dead).length >= 3) { this.dead = true; FX('venom', this.cx, gy, { opts: { size: 0.5 } }); Audio8.sfx('squish'); } // 地上最多 3 坨，多的直接摔爛
+        else if (this.type === 'bigpoop') { this.landed = true; this.vx = this.vy = 0; this.grav = 0; this.y = gy - this.h; this.t = 0; Audio8.sfx('squish'); G.shake = Math.max(G.shake, 3); FX('venom', this.cx, gy, { opts: { size: 0.5 } }); }
+        else { this.dead = true; FX('puff', this.cx, gy - 6, { opts: { size: 0.4 } }); Audio8.sfx('hit'); if (!G.arena || G.enemies.filter(e => e.code === 'b' && !e.dead && e.x > G.arena.x0 - 40).length < 4) { const e = new Enemy('b', this.cx, gy); e.rush = true; G.enemies.push(e); } } // 垃圾袋怪掉下來就活過來
+      } else if (this.grav && isSolid(Math.floor(this.cx / TS), Math.floor((this.y + this.h) / TS)) && this.vy > 0) {
         this.dead = true;
         if (this.type === 'bag' || this.type === 'rain') { const p = new Item('poop', this.cx, Math.floor((this.y + this.h) / TS) * TS, false); G.items.push(p); G.dynPoops++; Audio8.sfx('squish'); FX('venom', this.cx, p.y + p.h, { opts: { size: 0.3 }, life: 0.4 }); }
-        else if (this.type === 'germ') { FX('venom', this.cx, this.y + this.h, { opts: { size: 0.3 }, life: 0.4 }); Audio8.sfx('squish'); if (this.spawn && G.arena && G.enemies.filter(e => e.code === 'x' && e.x > G.arena.x0 - 40).length < 6) G.enemies.push(new Enemy('x', this.cx, Math.floor((this.y + this.h) / TS) * TS)); }
+        else if (this.type === 'germ') { FX('venom', this.cx, this.y + this.h, { opts: { size: 0.3 }, life: 0.4 }); Audio8.sfx('squish'); if (this.spawn && G.enemies.filter(e => e.code === 'x' && !e.dead && (G.arena ? e.x > G.arena.x0 - 40 : Math.abs(e.x - this.cx) < VW)).length < 6) G.enemies.push(new Enemy('x', this.cx, Math.floor((this.y + this.h) / TS) * TS)); }
         else if (this.type === 'rock') { FX('dust', this.cx, this.y + this.h, { opts: { size: 0.45 } }); Audio8.sfx('stomp', 0.1); G.shake = Math.max(G.shake, 2); for (let i = 0; i < 5; i++) G.parts.push({ x: this.cx, y: this.y + this.h - 2, vx: rnd(-1.5, 1.5), vy: rnd(-2.5, -1), life: 24, max: 24, c: i % 2 ? '#7a5634' : '#b5452e', s: 2, g: 0.15 }); }
         else if (this.type === 'can') { const p = new Item('trash', this.cx, Math.floor((this.y + this.h) / TS) * TS, false); G.items.push(p); Audio8.sfx('hit'); FX('dust', this.cx, this.y + this.h, { opts: { size: 0.3 } }); }
         else { FX('air', this.cx, this.y + this.h, { opts: { size: 0.3 } }); Audio8.sfx('hit'); }
       }
       if (this.type === 'wave' && this.t > 140) this.dead = true;
     }
-    if (this.t > 400 || this.y > VH + 60 || Math.abs(this.cx - G.camX - VW / 2) > VW) this.dead = true;
+    if ((this.t > 400 && !this.landed) || this.y > VH + 60 || Math.abs(this.cx - G.camX - VW / 2) > VW) this.dead = true;
     if (!this.dead && overlap(this, P)) {
       if (this.type === 'gust') { const A = G.arena; P.x += Math.sign(this.vx) * 1.6; if (A) P.x = clamp(P.x, A.x0 + 14, A.x1 - P.w - 14); if (this.t % 20 === 0) P.hurt(1, this.cx); } // 強風：把人往後推
-      else if (P.hurt(this.dmg, this.cx)) { if (this.type !== 'wave' && this.type !== 'gas') this.dead = true; }
+      else if (P.hurt(this.dmg, this.cx, this.landed ? '踩到臭便便！' : undefined)) { if (this.infect && window.infectPlayer) infectPlayer(); if (this.type !== 'wave' && this.type !== 'gas' && !this.landed) this.dead = true; }
     }
   }
   draw(ctx, cx) {
@@ -869,6 +886,16 @@ class EShot {
       case 'germ': { const c = x + 5, d = y + 5; ctx.fillStyle = '#7a3a8a'; for (let i = 0; i < 6; i++) { const a = i * 1.05 + this.t / 8; ctx.fillRect(Math.round(c + Math.cos(a) * 5) - 1, Math.round(d + Math.sin(a) * 5) - 1, 3, 3); } ctx.fillStyle = '#16111f'; ctx.beginPath(); ctx.arc(c, d, 5, 0, 7); ctx.fill(); ctx.fillStyle = '#8fbf3a'; ctx.beginPath(); ctx.arc(c, d, 4, 0, 7); ctx.fill(); ctx.fillStyle = '#ffb000'; ctx.fillRect(c, d - 2, 2, 2); break; }
       case 'orb': { const c = x + 6, d = y + 6, r = 5 + Math.sin(this.t / 3); ctx.globalAlpha = 0.45; ctx.fillStyle = '#b04dff'; ctx.beginPath(); ctx.arc(c, d, r + 3, 0, 7); ctx.fill(); ctx.globalAlpha = 1; ctx.fillStyle = '#2a0a3a'; ctx.beginPath(); ctx.arc(c, d, r, 0, 7); ctx.fill(); ctx.fillStyle = '#ff5af0'; ctx.fillRect(c - 1, d - 1, 2, 2); break; }
       case 'rock': drawRubble(ctx, x + 6, y + 6, 1, this.t); break; // 廢土塊
+      case 'bigpoop': { // 超大臭便便（踩到會受傷）
+        const w = this.landed ? 1 + Math.sin(this.t / 6) * 0.04 : 1; ctx.save(); ctx.translate(x + 9, y + 15); ctx.scale(w, 2 - w); if (this.hitT) ctx.globalAlpha = 0.6;
+        const L = [[0, -2, 9, 4], [0, -6, 7, 4], [0, -10, 5, 3.5], [1, -13, 2.5, 2.5]];
+        ctx.fillStyle = '#16111f'; for (const [cx2, cy2, rx, ry] of L) { ctx.beginPath(); ctx.ellipse(cx2, cy2, rx + 1, ry + 1, 0, 0, 7); ctx.fill(); }
+        L.forEach(([cx2, cy2, rx, ry], i) => { ctx.fillStyle = i % 2 ? '#8a5a2a' : '#6e4420'; ctx.beginPath(); ctx.ellipse(cx2, cy2, rx, ry, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#b07a40'; ctx.fillRect(Math.round(cx2 - rx * 0.5), Math.round(cy2 - ry * 0.6), 2, 1); });
+        ctx.fillStyle = '#fff'; ctx.fillRect(-4, -8, 3, 3); ctx.fillRect(2, -8, 3, 3); ctx.fillStyle = '#16111f'; ctx.fillRect(-3, -7, 1, 2); ctx.fillRect(3, -7, 1, 2); ctx.fillRect(-2, -4, 5, 1);
+        ctx.restore();
+        if (this.landed) { ctx.fillStyle = '#a6c24a'; for (let i = 0; i < 3; i++) { const sx = x + 3 + i * 6, sy = y - 4 - ((this.t / 3 + i * 5) % 8); ctx.fillRect(sx + (Math.floor(this.t / 6 + i) % 2), sy, 1, 3); } }
+        break; }
+      case 'bagmon': if (!SPR.draw(ctx, 'bag1', x + 6, y + this.h + 1, this.vx > 0 ? 1 : -1)) { ctx.fillStyle = '#16111f'; ctx.fillRect(x, y, 12, 12); ctx.fillStyle = '#2b2b35'; ctx.fillRect(x + 1, y + 1, 10, 10); ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 3, y + 4, 2, 2); ctx.fillRect(x + 7, y + 4, 2, 2); } break; // 被吹來的垃圾袋怪
       case 'can': { ctx.save(); ctx.translate(x + 5, y + 6); ctx.rotate(this.t / 5); ctx.fillStyle = '#16111f'; ctx.fillRect(-5, -6, 10, 12); ctx.fillStyle = (this.t >> 3) % 2 ? '#d84a3a' : '#4a9ad8'; ctx.fillRect(-4, -5, 8, 10); ctx.fillStyle = '#ddd'; ctx.fillRect(-4, -5, 8, 2); ctx.restore(); break; }
       case 'gust': { ctx.globalAlpha = 0.7; ctx.strokeStyle = '#dff4ff'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { const yy = y + 4 + i * 7, ph = (this.t * 2 + i * 9) % 18; ctx.beginPath(); ctx.moveTo(x + ph * 0.3, yy); ctx.quadraticCurveTo(x + 9, yy - 4, x + 18 - ph * 0.3, yy); ctx.stroke(); } ctx.globalAlpha = 1; break; }
       default: ctx.fillStyle = '#fff'; ctx.fillRect(x, y, this.w, this.h);
