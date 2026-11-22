@@ -2,7 +2,12 @@
 const INTRUDERS = {
   rhino: { name: '犀牛怪人', hp: 14, w: 44, h: 60, lines: ['閃開閃開～犀牛衝鋒！', '哼！擋我者死！'], ko: '嗚哇——我記住你了！' },
   typhoon: { name: '颱風怪人', hp: 16, w: 44, h: 60, lines: ['呼～呼～把垃圾吹滿街！', '颱風天最愛亂丟東西啦！'], ko: '我…我還會再來的～' },
+  virus: { name: '病毒怪人', hp: 14, w: 34, h: 54, lines: ['嘿嘿～積水的地方都是我的家！', '病毒彈，接招！'], ko: '咳咳…我還會再繁殖的～' }, // 只在二周目亂入（圖是二周目才載入）
 };
+// 超人與怪人相剋：針筒超人打得贏病毒、會被颱風吹飛；中央山脈超人擋得住颱風、會被病毒打飛
+const HERO_WEAK = { typhoon: 's', virus: 'm' };
+const HERO_NAME = { m: '中央山脈超人', s: '針筒超人' };
+const playerName = () => G.char === 'witch' ? '豪鬼主任' : '小編';
 G.intruderTimer = 900;
 
 function endIntruder() { G.intruder = null; Audio8.stopSfx('siren', 'gas'); }
@@ -16,7 +21,7 @@ function spawnIntruder(kind) {
   const P = G.player, D = INTRUDERS[kind], dir = Math.random() < 0.5 ? 1 : -1; // dir = 移動方向
   const x = dir > 0 ? G.camX - 50 : G.camX + VW + 50;
   const I = { kind, dir, x: x - D.w / 2, y: 0, w: D.w, h: D.h, hp: D.hp, t: 0, state: 'warn', flash: 0, vx: 0, vy: 0, say: '', sayT: 0, hero: null };
-  if (kind === 'rhino') I.y = floorAt(x, P.y + P.h) - D.h;
+  if (kind === 'rhino' || kind === 'virus') I.y = floorAt(x, P.y + P.h) - D.h;
   else I.y = 60;
   G.intruder = I;
   Audio8.sfx('siren');
@@ -30,7 +35,10 @@ function updateIntruder() {
     if (G.cameo || --G.intruderTimer > 0) return;
     G.intruderTimer = Math.round((1200 + Math.floor(rnd(0, 900))) * (G.hard ? 0.5 : 1)); // 怪人更常亂入
     if (G.level.arena && P.x > G.level.arena.x0 - 200) return; // 魔王房附近不亂入
-    spawnIntruder(Math.random() < 0.5 ? 'rhino' : 'typhoon');
+    // 一周目：犀牛／颱風；二周目再加病毒。這一關的關主是哪個怪人，牠就不會亂入
+    const bossKind = { virus: 'virus', typhoonB: 'typhoon', rhinoB: 'rhino' }[G.level.def.boss];
+    const pool = (G.level.def.loop === 2 && SPR.has('vb_walk0') ? ['rhino', 'typhoon', 'virus'] : ['rhino', 'typhoon']).filter(k => k !== bossKind);
+    spawnIntruder(pool[Math.floor(rnd(0, pool.length))]);
     return;
   }
   const I = G.intruder, D = INTRUDERS[I.kind]; I.t++; if (I.flash) I.flash--; if (I.sayT) I.sayT--;
@@ -50,7 +58,7 @@ function updateIntruder() {
   }
   if (I.hero) updateHeroStrike(I);
   // 子彈打到
-  for (const b of G.bullets) if (!b.dead && overlap(b, I) && b.hitEnemy(I)) { I.hp -= b.dmg; I.flash = 6; Audio8.sfx('hit'); if (I.hp <= 0) { knockOut(I, '被小編打跑了！'); return; } }
+  for (const b of G.bullets) if (!b.dead && overlap(b, I) && b.hitEnemy(I)) { I.hp -= b.dmg; I.flash = 6; Audio8.sfx('hit'); if (I.hp <= 0) { knockOut(I, '被' + playerName() + '打跑了！'); return; } }
   if (I.state === 'warn') { // 出場前的提示
     if (I.t === 1) { I.say = D.lines[0]; I.sayT = 90; }
     if (I.t > 40) { I.state = 'go'; I.t = 0; }
@@ -62,6 +70,19 @@ function updateIntruder() {
       if (I.t % 14 === 0) G.shake = Math.max(G.shake, 1.5);
       if (overlap(I, P)) P.hurt(4, cx, '被犀牛撞飛！');
       if ((I.dir > 0 && I.x > G.camX + VW + 60) || (I.dir < 0 && I.x + I.w < G.camX - 60)) endIntruder();
+    }
+  } else if (I.kind === 'virus') {
+    // 病毒怪人：一跳一跳地走過去，邊走邊朝主角吐病毒彈
+    if (I.state === 'go') {
+      I.face = P.cx < cx ? -1 : 1;
+      const ground = floorAt(cx, I.y + I.h);
+      I.vy += 0.3; I.y += I.vy; I.air = true;
+      if (I.y + I.h >= ground) { I.y = ground - I.h; I.vy = 0; I.air = false; if (I.t % 60 === 0) { I.vy = -4; Audio8.sfx('land', 0.2); } }
+      I.x += I.dir * 1.2;
+      if (I.t % 90 === 45) { G.eshots.push(new EShot('germ', cx + I.face * 12, I.y + 16, I.face * clamp(Math.abs(P.cx - cx) / 45, 1.2, 4), -4, { dmg: 2 })); Audio8.sfx('throw'); I.spitT = 10; I.say = D.lines[1]; I.sayT = 70; }
+      if (I.spitT) I.spitT--;
+      if (overlap(I, P)) P.hurt(3, cx, '被病毒撞到！');
+      if ((I.dir > 0 && I.x > G.camX + VW + 60) || (I.dir < 0 && I.x + I.w < G.camX - 60) || I.t > 1200) endIntruder();
     }
   } else {
     // 颱風怪人：飛到主角前方盤旋，吹風把主角往後推，順便丟垃圾
@@ -93,8 +114,18 @@ function updateHeroStrike(I) {
   const tx = I.x + I.w / 2, tyy = I.y + I.h / 2;
   if (!h.hit) {
     h.x += (tx - h.x) * 0.12; h.y += (tyy - h.y) * 0.12;
-    if (I.kind === 'typhoon' && h.id === 's' && Math.abs(tx - h.x) < 40 && I.state !== 'ko') { h.blown = true; h.hit = true; h.t = 0; I.say = '呼～～針筒超人吹走啦！'; I.sayT = 80; Audio8.sfx('gas'); floatText(h.x, h.y - 10, '針筒超人：哇啊啊～被吹走了！', '#9fd0ff', true); return; }
-    if (Math.abs(tx - h.x) < 10 && I.state !== 'ko') { h.hit = true; h.t = 0; knockOut(I, (h.id === 'm' ? '中央山脈超人' : '針筒超人') + '：滾開！別妨礙小編！'); I.vx = Math.sign(tx - (h.x - h.from * 20)) * 5 || 5; G.flash = 4; }
+    // 相剋：被剋的超人一靠近就被打飛
+    if (HERO_WEAK[I.kind] === h.id && Math.abs(tx - h.x) < 40 && I.state !== 'ko') {
+      h.blown = true; h.hit = true; h.t = 0; I.sayT = 80;
+      if (I.kind === 'typhoon') { I.say = '呼～～針筒超人吹走啦！'; Audio8.sfx('gas'); floatText(h.x, h.y - 10, '針筒超人：哇啊啊～被吹走了！', '#9fd0ff', true); }
+      else { I.say = '病毒噴射！山脈超人飛走啦！'; Audio8.sfx('squish'); FX('venom', h.x, h.y + 10, { opts: { size: 0.4 }, life: 0.6 }); floatText(h.x, h.y - 10, '中央山脈超人：哇啊～被病毒噴飛了！', '#b6ff6a', true); }
+      return;
+    }
+    if (Math.abs(tx - h.x) < 10 && I.state !== 'ko') {
+      h.hit = true; h.t = 0;
+      const win = I.kind === 'virus' && h.id === 's' ? '針筒超人：打一針，病毒退散！' : I.kind === 'typhoon' && h.id === 'm' ? '中央山脈超人：山脈擋住颱風！' : HERO_NAME[h.id] + '：滾開！別妨礙' + playerName() + '！';
+      knockOut(I, win); I.vx = Math.sign(tx - (h.x - h.from * 20)) * 5 || 5; G.flash = 4;
+    }
   } else if (h.blown) { h.x += (h.x < tx ? -1 : 1) * 5; h.y -= 2.5; h.spin = (h.spin || 0) + 0.4; if (h.t > 70) I.hero = null; }
   else { h.x += -h.from * 4; h.y -= 2; if (h.t > 60) I.hero = null; }
 }
@@ -104,8 +135,9 @@ function drawIntruder(cam) {
   const cx = I.x + I.w / 2 - cam, feet = I.y + I.h + 1;
   let k;
   if (I.kind === 'rhino') k = I.state === 'ko' ? 'vr_ko' : I.state === 'go' ? 'vr_run' + (Math.floor(I.t / 4) % 4) : 'vr_idle';
+  else if (I.kind === 'virus') k = I.state === 'ko' ? 'vb_ko0' : I.spitT ? 'vb_spit' : I.air ? 'vb_jump' : I.state === 'go' ? 'vb_walk' + (Math.floor(I.t / 6) % 4) : 'vb_idle0';
   else k = I.state === 'ko' ? 'vt_ko' : I.blow ? 'vt_blow' : I.sayT > 0 && I.t % 120 > 60 ? 'vt_laugh' : 'vt_fly' + (Math.floor(I.t / 10) % 2);
-  const face = I.kind === 'rhino' ? I.dir : (I.face || -I.dir);
+  const face = I.kind === 'rhino' ? I.dir : I.kind === 'virus' ? (I.face || I.dir) : (I.face || -I.dir);
   ctx.save();
   if (I.state === 'ko') { ctx.translate(cx, I.y + I.h / 2); ctx.rotate(I.rot || 0); ctx.translate(-cx, -(I.y + I.h / 2)); }
   if (I.state === 'warn' && (I.t >> 2) % 2) ctx.globalAlpha = 0.5;

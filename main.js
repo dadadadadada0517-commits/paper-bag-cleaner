@@ -7,7 +7,7 @@ const G = {
 let save = { cleared: [], stats: {} };
 try { const s = JSON.parse(localStorage.getItem('pbh_save2') || 'null'); if (s && Array.isArray(s.cleared)) save = s; } catch (e) {}
 function writeSave() { try { localStorage.setItem('pbh_save2', JSON.stringify(save)); } catch (e) {} }
-G.loop = 1; G.char = save.char === 'witch' && save.cleared.includes(4) ? 'witch' : 'hero'; G.hard = !!save.hard; // 角色（一周目破關後可選豪鬼主任）、難度
+G.loop = 1; G.char = 'hero'; G.hard = !!save.hard; // 角色只在二周目生效（save.char 記住選擇）；一周目固定小編，不然第四關會自己打自己 // 角色（一周目破關後可選豪鬼主任）、難度
 function syncAbilities() {
   // 二周目：一周目的能力和三把魔王武器全部帶著
   const c = G.loop === 2 ? [1, 2, 3] : [1, 2, 3].filter(n => save.cleared.includes(n));
@@ -42,7 +42,7 @@ addEventListener('resize', resize); resize();
 // ---------- 圖片（GPT 生成） ----------
 const IMG = {};
 const LOAD = { n: 0, done: 0 }; // 讀取進度（成功或失敗都算完成，不會卡住）
-['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { IMG[k] = im; LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'gpt-' + k + '.jpg?v=11222331'; });
+['p_hero', 'p_witch', 'p_abo', 'p_lady', 'p_dogking', 'p_chief', 'p_kid', 'title', 'bg1', 'bg2', 'bg3', 'bg4'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { IMG[k] = im; LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'gpt-' + k + '.jpg?v=11222351'; });
 // GPT 生成的介面文字圖（洋紅底 → 去背、裁邊）
 const UI = {};
 // 去紫邊：只處理貼著透明區、而且「非常接近洋紅」的邊緣像素（不會吃掉粉紅、紫色的衣服頭髮）
@@ -77,7 +77,7 @@ function keyMagenta(img) {
   x.putImageData(im, 0, 0);
   const o = PX.canvas(Math.max(1, x1 - x0 + 1), Math.max(1, y1 - y0 + 1)); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
-['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'ui-' + k + '.webp?v=11222331'; });
+['ui_logo', 'ui_get', 'ui_ab_charge', 'ui_ab_djump', 'ui_ab_dash', 'ui_ultimate', 'ui_warning', 'ui_ready', 'ui_clear', 'ui_s1', 'ui_s2', 'ui_s3', 'ui_s4', 'ui_end', 'ui_w_bag', 'ui_w_bubble', 'ui_w_tornado', 'ui_tipbanner', 'ui_bubble', 'ui_bubble_hero', 'ui_win', 'ui_slogan'].forEach(k => { const im = new Image(); LOAD.n++; im.onload = () => { try { UI[k] = keyMagenta(im); } catch (e) {} LOAD.done++; }; im.onerror = () => LOAD.done++; im.src = 'ui-' + k + '.webp?v=11222351'; });
 // 全部讀完（人物圖＋介面圖＋背景）＝ 1；超過 25 秒也直接放行
 const LOAD_T0 = performance.now();
 function loadProgress() { const p = SPR.progress * 0.6 + (LOAD.n ? LOAD.done / LOAD.n : 1) * 0.4; return performance.now() - LOAD_T0 > 25000 ? 1 : Math.min(1, p); }
@@ -89,7 +89,7 @@ const LZ = { n: 0, done: 0, started: false, t0: 0 };
 function startLoop2Load() {
   if (LZ.started) return; LZ.started = true; LZ.t0 = performance.now();
   SPR.loadLazy();
-  LOOP2_IMG.forEach(k => { const im = new Image(); LZ.n++; im.onload = () => { IMG[k] = im; LZ.done++; }; im.onerror = () => LZ.done++; im.src = 'gpt-' + k + '.jpg?v=11222331'; });
+  LOOP2_IMG.forEach(k => { const im = new Image(); LZ.n++; im.onload = () => { IMG[k] = im; LZ.done++; }; im.onerror = () => LZ.done++; im.src = 'gpt-' + k + '.jpg?v=11222351'; });
 }
 function loop2Progress() { if (!LZ.started) return 0; if (performance.now() - LZ.t0 > 30000) return 1; return Math.min(1, SPR.lazyProgress * 0.7 + (LZ.n ? LZ.done / LZ.n : 1) * 0.3); }
 function enterLoop2() {
@@ -97,6 +97,14 @@ function enterLoop2() {
   if (loop2Progress() >= 1) return goSelect(2);
   G.mode = 'lazy'; loadShown = 0; Audio8.music('title');
 }
+const LOOP2_TIPS = [
+  '二周目可以換成豪鬼主任！選關畫面按「衝」換角色',
+  '豪鬼主任：在空中連點「跳」，騎掃把往上飛！',
+  '豪鬼主任：放開就會自動滑翔，按住「射」集氣也不會掉下去',
+  '豪鬼主任：蘑菇頭往下＝快速下降',
+  '豪鬼主任：射出魔法星星，在空中也能集氣大星星！',
+  '豪鬼主任的大絕招：流星雨，全畫面一起清光光！',
+];
 function drawLoading(pp) {
   const t = G.t, p = pp != null ? pp : loadProgress(); loadShown += (p - loadShown) * 0.15; if (p >= 1) loadShown = Math.min(1, loadShown + 0.03);
   const g = sctx.createLinearGradient(0, 0, 0, VH * K); g.addColorStop(0, '#141a3c'); g.addColorStop(1, '#05060f'); sctx.fillStyle = g; sctx.fillRect(0, 0, screen.width, screen.height);
@@ -113,7 +121,10 @@ function drawLoading(pp) {
   sctx.fillStyle = '#5fd8ff'; sctx.beginPath(); sctx.arc(dx * K, (dy2 + 3) * K, 3 * K, 0, 7); sctx.fill(); sctx.beginPath(); sctx.moveTo((dx - 2.6) * K, (dy2 + 1.8) * K); sctx.lineTo(dx * K, (dy2 - 3.6) * K); sctx.lineTo((dx + 2.6) * K, (dy2 + 1.8) * K); sctx.fill();
   sctx.fillStyle = '#ffffff'; sctx.fillRect((dx - 1.5) * K, (dy2 + 1) * K, 1.2 * K, 1.2 * K);
   txt('NOW LOADING' + '...'.slice(0, (t >> 4) % 4), 80, 118, 9, '#ffffff', 'left', '#0a1030'); txt(Math.round(loadShown * 100) + '%', 320, 118, 9, '#ffe36a', 'right', '#0a1030');
-  txt(LOAD_TIPS[Math.floor(t / 150) % LOAD_TIPS.length], 200, 168, 8, '#d8def0', 'center', '#0a1030');
+  const tips = pp != null ? LOOP2_TIPS : LOAD_TIPS; // 二周目讀取畫面：介紹豪鬼主任的操作
+  let tip = tips[Math.floor(t / 150) % tips.length];
+  if (!IS_TOUCH) tip = tip.replace('「衝」', ' C ').replace('「跳」', ' Z ').replace('「射」', ' X ').replace('蘑菇頭往下', '按 ↓');
+  txt(tip, 200, 168, 8, '#d8def0', 'center', '#0a1030');
 }
 // 宣導標語：解決狀況時在畫面上方滑入（每關每種只出現一次）
 const TIPS = {
@@ -146,10 +157,10 @@ const MIDIMG = {}, PITIMG = {}, SELHEAD = [];
   let segs = [], s = -1; col.forEach((v, i) => { if (v && s < 0) s = i; if (!v && s >= 0) { segs.push([s, i]); s = -1; } }); if (s >= 0) segs.push([s, c.width]);
   segs = segs.filter(g => g[1] - g[0] > c.width / 40).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0])).slice(0, 5).sort((a, b) => a[0] - b[0]);
   for (const [a, b] of segs) { let top = c.height, bot = 0; for (let j = 0; j < c.height; j++) for (let i = a; i < b; i += 2) if (d[(j * c.width + i) * 4 + 3] > 0) { if (j < top) top = j; bot = j; break; } const o = document.createElement('canvas'); o.width = b - a; o.height = bot - top + 1; o.getContext('2d').drawImage(c, a, top, b - a, bot - top + 1, 0, 0, b - a, bot - top + 1); SELHEAD.push(o); }
-} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11222331'; }
+} catch (e) {} }; im.src = 'art-sel_heads.webp?v=11222351'; }
 [1, 2, 3, 4].forEach(n => {
-  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11222331';
-  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11222331';
+  const im = new Image(); im.onload = () => { try { MIDIMG[n] = keyMagenta(im); } catch (e) {} }; im.src = 'art-mid' + n + '.webp?v=11222351';
+  const ip = new Image(); ip.onload = () => { try { PITIMG[n] = keyMagenta(ip); } catch (e) {} }; ip.src = 'art-pit' + n + '.webp?v=11222351';
 });
 
 // ---------- 英雄亂入：中央山脈超人／針筒超人 ----------
@@ -251,7 +262,9 @@ function drawHeroSay() {
   const s = G.heroSay; if (!s || !G.zc || G.dialog) return;
   const P = G.player, [x, y] = worldToScreen(P.cx, P.y - 16);
   sctx.globalAlpha = Math.min(1, s.t / 15);
-  drawBubble('ui_bubble', x, Math.max(44, y - 20), s.text, '#16233a', '#16111f', x);
+  // 平常在頭上；飛太高（會撞到上方 HUD）時改顯示在腳下，一樣跟著人跑
+  if (y - 20 >= 44) drawBubble('ui_bubble', x, y - 20, s.text, '#16233a', '#16111f', x);
+  else { const [, fy] = worldToScreen(P.cx, P.y + P.h); drawBubble('ui_bubble', x, Math.min(VH - 24, fy + 6), s.text, '#16233a', '#16111f'); }
   sctx.globalAlpha = 1;
 }
 // GPT 對話泡泡（沒有圖時用簡單框）
@@ -335,7 +348,8 @@ function stepScript() {
   }
 }
 function* talk(lines) {
-  for (const l of lines) {
+  for (const l0 of lines) {
+    const l = forPlayer(l0); // 看選的英雄：選豪鬼主任就由她來講
     const [who, name, text] = l.length === 3 ? l : [l[0] === '小編' ? 'hero' : l[0] === '小學生' ? 'kid' : 'chief', l[0], l[1]];
     G.dialog = { who, name, text, shown: 0, t: 0 };
     yield () => G.dialog === null;
@@ -439,10 +453,14 @@ G.cleanUp = (x, y, msg, amt = 1) => {
 G.heal = (n) => { const P = G.player; const start = P.hp; P.hp = Math.min(P.maxHp, P.hp + n); FX('heal', P.cx, P.y + P.h, { opts: { size: 0.4 } }); Audio8.sfx('heal'); };
 
 // ---------- 流程 ----------
-function goTitle() { G.mode = 'title'; G.menu = 0; Audio8.music('title'); if (window.VFX) VFX.clear(); }
+function goTitle() {
+  // 已經能玩二周目的人：一到開始畫面就在背景先下載二周目素材，按下去不用等
+  if (save.cleared.includes(4) || SECRET || save.char === 'witch') setTimeout(startLoop2Load, 800);
+  G.mode = 'title'; G.menu = 0; Audio8.music('title'); if (window.VFX) VFX.clear(); }
 function goSelect(loop) {
   if (loop) G.loop = loop; else G.loop = G.stage >= 5 ? 2 : (G.loop || 1);
-  const o = loopOff(); G.selSayI = -1;
+  G.char = G.loop === 2 && save.char === 'witch' ? 'witch' : 'hero';
+  const o = loopOff(); G.selSayI = -1; G.charSay = null; G.charSwapT = null;
   G.mode = 'select'; syncAbilities(); G.sel = [1, 2, 3].every(i => save.cleared.includes(o + i)) ? 3 : [0, 1, 2].find(i => !save.cleared.includes(o + i + 1)) || 0; Audio8.music('title'); if (window.VFX) VFX.clear();
 }
 function* storyIntro() {
@@ -451,6 +469,7 @@ function* storyIntro() {
   goSelect();
 }
 function startStage(n) {
+  if (n === 4) setTimeout(startLoop2Load, 500); // 打最終關時就在背景預先下載二周目（趁關卡標題動畫時處理，不卡遊戲），破關後直接進
   G.mode = 'stageCard'; G.cardT = 0; G.cardStage = n; Audio8.stopMusic(); Audio8.sfx('select');
   run((function* () {
     yield 6; Audio8.music(LEVEL_DATA[n - 1].music); yield 214;
@@ -626,7 +645,7 @@ function openCert() {
   ['touchstart', 'touchend', 'pointerdown'].forEach(n => d.addEventListener(n, e => e.stopPropagation(), { passive: true }));
   inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') d.querySelector('#cMake').click(); });
   d.querySelector('#cMake').onclick = () => { certName = inp.value.trim(); try { localStorage.setItem('pbh_name', certName); } catch (e) {} certCv = makeCert(certName); Audio8.sfx('select'); inp.blur(); };
-  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11222331'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
+  d.querySelector('#cSave').onclick = () => { certName = inp.value.trim() || certName; certCv = makeCert(certName); certCv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '小編出擊_獎狀_' + (certName || '清潔英雄') + '.webp?v=11222351'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, 'image/png'); Audio8.sfx('getweapon'); };
   d.querySelector('#cBack').onclick = () => { d.remove(); certUI = null; goTitle(); };
 }
 function drawCertScreen() {
@@ -784,7 +803,12 @@ function update() {
         if (I.pressed.down) { G.sel = 3; Audio8.sfx('cursor'); }
       } else if (I.pressed.up || I.pressed.left || I.pressed.right) { G.sel = 1; Audio8.sfx('cursor'); }
       if (I.pressed.ok) { if (stageUnlocked(o + G.sel + 1)) startStage(o + G.sel + 1); else { Audio8.sfx('hurt'); toast(o ? '最終關：要先打倒三個怪人才能挑戰！' : '最終關：要先打倒三個魔王才能挑戰！'); } }
-      if (I.pressed.dash) { goTitle(); }
+      if (o && I.pressed.dash) { // 二周目：按「衝」直接換角色，換完講一句話
+        G.char = save.char = G.char === 'witch' ? 'hero' : 'witch'; writeSave(); startLoop2Load(); syncAbilities();
+        const q = G.char === 'witch' ? CHAR_SWAP_LINES.witch : CHAR_SWAP_LINES.hero;
+        G.charSay = { text: q[Math.floor(rnd(0, q.length))], t0: G.t, sel: G.sel }; G.charSwapT = G.t; Audio8.sfx('warp'); Audio8.sfx('select');
+      }
+      else if (I.pressed.dash || (o && I.pressed.swap)) { goTitle(); }
       break;
     }
     case 'stageCard': { G.cardT++; const t = G.cardT, D = LEVEL_DATA[G.cardStage - 1];
@@ -828,7 +852,7 @@ function titleOptions() {
   if (save.cleared.some(n => n <= 4)) o.push(['繼續（關卡選擇）', () => goSelect(1)]);
   if (loop1) o.push(['★ 二周目（怪人篇）', () => enterLoop2()]);
   o.push(['開始新遊戲', () => { const keep = { char: save.char, hard: save.hard }; save = { cleared: [], stats: {}, ...keep }; writeSave(); syncAbilities(); G.deaths = 0; goSelect(1); }]);
-  if (loop1) o.push(['角色：' + (G.char === 'witch' ? '豪鬼主任（飛行）' : '小編'), () => { G.char = save.char = G.char === 'witch' ? 'hero' : 'witch'; writeSave(); if (G.char === 'witch') { startLoop2Load(); toast('豪鬼主任：空中連點「跳」飛行，自動滑翔，絕招＝流星雨！'); } }]);
+  if (loop1) o.push(['二周目角色：' + (save.char === 'witch' ? '豪鬼主任' : '小編'), () => { save.char = save.char === 'witch' ? 'hero' : 'witch'; writeSave(); if (save.char === 'witch') { startLoop2Load(); toast('豪鬼主任：空中連點「跳」飛行，自動滑翔，絕招＝流星雨！'); } }]);
   o.push(['難度：' + (G.hard ? '困難' : '普通'), () => { G.hard = save.hard = !G.hard; writeSave(); }]);
   o.push(['操作說明', () => { G.mode = 'help'; }]);
   return o;
@@ -1399,7 +1423,8 @@ function drawSelect() {
   const o = loopOff();
   txt(o ? 'STAGE SELECT  二周目' : 'STAGE SELECT', 200, 4, 13, o ? '#ff9a6a' : '#ffe36a', 'center');
   txt(IS_TOUCH ? '蘑菇頭選關卡' : '方向鍵選關卡', 56, 26, 7, '#9ff3ff', 'center'); txt(IS_TOUCH ? '按綠色「射」確定' : '按 Z 或 X 確定', 56, 37, 7, '#9ff3ff', 'center');
-  txt(IS_TOUCH ? '按「衝」回開始畫面' : '按 C 回開始畫面', 56, 52, 7, '#ffd23f', 'center'); txt('（可換角色、難度）', 56, 63, 7, '#ffd23f', 'center');
+  if (o) { txt(IS_TOUCH ? '按「衝」換角色' : '按 C 換角色', 56, 52, 7, '#ffd23f', 'center'); txt(IS_TOUCH ? '按「換」回開始畫面' : '按 S 回開始畫面', 56, 63, 7, '#ffd23f', 'center'); }
+  else { txt(IS_TOUCH ? '按「衝」回開始畫面' : '按 C 回開始畫面', 56, 52, 7, '#ffd23f', 'center'); txt('（可換角色、難度）', 56, 63, 7, '#ffd23f', 'center'); }
   const F = 48, P = [[96, 118], [200, 52], [304, 118], [200, 184]], C = [200, 118];
   // 中心到四格的連接光帶
   for (const [x, y] of P) { sctx.strokeStyle = 'rgba(127,230,255,0.25)'; sctx.lineWidth = 3 * K; sctx.beginPath(); sctx.moveTo(C[0] * K, C[1] * K); sctx.lineTo(x * K, y * K); sctx.stroke(); }
@@ -1416,15 +1441,29 @@ function drawSelect() {
     if (cleared) { sctx.save(); sctx.translate(cx * K, (y + F / 2) * K); sctx.rotate(-0.25); txt('CLEAR', 0, -6, 10, '#ff3b3b', 'center', '#fff'); sctx.restore(); }
     txt(D.bossName, cx, y + F + 4, 7, sel ? '#ffe36a' : '#ff9fc8', 'center');
   });
-  { const [x, y] = frame(C[0], C[1], false, '#7fe6ff');
+  { const sw = G.charSwapT != null ? G.t - G.charSwapT : 99, pop = sw < 10 ? 1 + (10 - sw) * 0.03 : 1;
+    const [x, y] = frame(C[0], C[1], sw < 20 && sw % 4 < 2, G.char === 'witch' ? '#ff9ae6' : '#7fe6ff');
+    if (sw < 14) { sctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - sw / 14)})`; sctx.fillRect(x * K, y * K, F * K, F * K); }
     const hi = [1, 3, 2, 4][G.sel], h = SELHEAD.length === 5 && !o && G.char !== 'witch' ? SELHEAD[hi] : null;
+    if (pop !== 1) { sctx.save(); sctx.translate(C[0] * K, (y + F / 2) * K); sctx.scale(pop, pop); sctx.translate(-C[0] * K, -(y + F / 2) * K); }
     if (G.char === 'witch') portrait('witch', x, y, F, false);
+    else if (o) portrait('hero', x, y, F, false);
     else if (h) { const k = Math.min(F / h.width, F / h.height); sctx.drawImage(h, (C[0] - h.width * k / 2) * K, (y + F - h.height * k) * K, h.width * k * K, h.height * k * K); }
     else portrait('hero', x, y, F, false);
-    txt(G.char === 'witch' ? '豪鬼主任' : '小編', C[0], y + F + 4, 7, '#7fe6ff', 'center'); }
+    if (pop !== 1) sctx.restore();
+    txt(G.char === 'witch' ? '豪鬼主任' : '小編', C[0], y + F + 4, 7, G.char === 'witch' ? '#ff9ae6' : '#7fe6ff', 'center'); }
+  // 剛換角色：換上的角色講一句話（約 3 秒，暫時取代關主的台詞框）；一移動選關就收掉，不會跑到怪人那邊
+  if (G.charSay && G.charSay.sel !== G.sel) G.charSay = null;
+  if (G.charSay && G.t - G.charSay.t0 < 180) {
+    const s = G.charSay, n = Math.min(s.text.length, Math.floor((G.t - s.t0) / 2)), col = G.char === 'witch' ? '#ff9ae6' : '#7fe6ff';
+    const [qx, qy] = [[14, 150], [234, 36], [228, 150], [234, 152]][G.sel], qw = 158;
+    box(qx, qy, qw, 30, 'rgba(10,12,28,0.94)', col); txt(G.char === 'witch' ? '豪鬼主任' : '小編', qx + 6, qy + 4, 7, col, 'left'); txt(s.text.slice(0, n), qx + 6, qy + 16, 7.5, '#ffffff', 'left');
+    if (n < s.text.length && (G.t - s.t0) % 4 === 0) Audio8.sfx('blip', 0.05);
+    G.selSayT0 = G.t; // 講完後，關主的台詞再從頭打字
+  }
   // 選到的關主講一句話（打字效果）
   if (G.selSayI !== G.sel) { G.selSayI = G.sel; const q = SELECT_QUOTES[o + G.sel]; G.selSayText = q[Math.floor(rnd(0, q.length))]; G.selSayT0 = G.t; }
-  { const Dq = LEVEL_DATA[o + G.sel], n = Math.min(G.selSayText.length, Math.floor((G.t - G.selSayT0) / 2)), col = ['#ff9a3a', '#ff7ad9', '#b07aff', '#ff4552'][G.sel];
+  if (!(G.charSay && G.t - G.charSay.t0 < 180)) { const Dq = LEVEL_DATA[o + G.sel], n = Math.min(G.selSayText.length, Math.floor((G.t - G.selSayT0) / 2)), col = ['#ff9a3a', '#ff7ad9', '#b07aff', '#ff4552'][G.sel];
     const [qx, qy] = [[14, 150], [234, 36], [228, 150], [234, 152]][G.sel], qw = 158;
     box(qx, qy, qw, 30, 'rgba(10,12,28,0.94)', col); txt(Dq.bossName, qx + 6, qy + 4, 7, col, 'left'); txt(G.selSayText.slice(0, n), qx + 6, qy + 16, 7.5, '#ffffff', 'left');
     if (n < G.selSayText.length && n % 2 === 0 && (G.t - G.selSayT0) % 4 === 0) Audio8.sfx('blip', 0.05); }
@@ -1602,7 +1641,6 @@ function loop(now) {
   try { render(); renderToast(); } catch (e) { console.error('render', e); }
 }
 syncAbilities();
-if (G.char === 'witch') setTimeout(startLoop2Load, 3000); // 上次選了豪鬼主任：等主要資源讀完再補下載她的圖
 // 測試用網址參數：?stage=2&boss=1&all=1
 if (QS.has('stage')) {
   const n = +QS.get('stage');

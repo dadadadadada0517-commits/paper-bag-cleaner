@@ -271,8 +271,10 @@ class Boss {
   summon(code, n, max = 5) {
     for (let i = 0; i < n; i++) {
       if (G.enemies.filter(e => e.code === code && !e.dead && e.x > this.ax0 - 40).length >= max) break; // 只算魔王房間裡的
-      const side = i % 2 ? -1 : 1, x = clamp(this.cx + side * (40 + i * 16), this.ax0 + 16, this.ax1 - 16);
-      G.enemies.push(new Enemy(code, x, this.floorY)); FX('puff', x, this.floorY - 8);
+      // 直接在魔王身邊冒煙變出來，一出來就往主角衝（不用瞄準框）
+      const side = i % 2 ? -1 : 1, x = clamp(this.cx + side * (22 + i * 10), this.ax0 + 16, this.ax1 - 16);
+      const e = new Enemy(code, x, this.floorY); e.rush = true; e.st = 40; G.enemies.push(e);
+      FX('puff', x, this.floorY - 10, { opts: { size: 0.5 } }); for (let k = 0; k < 8; k++) G.parts.push({ x, y: this.floorY - 10, vx: rnd(-1.5, 1.5), vy: rnd(-2, -0.5), life: 22, max: 22, c: code === 'g' ? '#3a3040' : '#8fbf3a', s: 3, g: 0, smoke: true });
     }
   }
 
@@ -360,15 +362,19 @@ class Boss {
       case 'stomp':
         if (this.st === 1) { this.vx = clamp((P.cx - this.cx) / 50, -3, 3); this.vy = -6.5; this.face = Math.sign(this.vx) || this.face; }
         if (this.st > 10 && this.onGround) { this.vx = 0; this.next('idle'); } break;
-      case 'rocks': {
-        this.faceP(); const n = this.phase2 ? 4 : 3;
-        if (this.st % 18 === 8 && this.st < n * 18) { this.throwT = 8; Audio8.sfx('throw'); const dist = Math.abs(P.cx - this.cx); G.eshots.push(new EShot('rock', this.cx + this.face * 16, this.y + 8, this.face * clamp(dist / 50 + rnd(-0.3, 0.3), 1.5, 4.5), -4.5, { dmg: 3 })); }
-        if (this.st > n * 18 + 30) this.next('idle'); break; }
+      case 'rocks': { // 丟廢土塊：先舉過頭頂（往後仰），再往前一甩
+        this.faceP(); const n = (this.phase2 ? 4 : 3) + (G.hard ? 1 : 0), per = 26, ph = this.st % per;
+        if (this.st === 1) floatText(this.cx, this.y - 10, '廢土丟過去！', '#e0b070', true);
+        if (this.st < n * per) {
+          if (ph === 1) { this.holdT = 14; Audio8.sfx('charge1', 0.1); }
+          if (ph === 15) { this.holdT = 0; this.throwT = 10; Audio8.sfx('throw'); const dist = Math.abs(P.cx - this.cx); G.eshots.push(new EShot('rock', this.cx + this.face * 10, this.y - 6, this.face * clamp(dist / 50 + rnd(-0.3, 0.3), 1.5, 4.5), -4.2, { dmg: 3 })); }
+        }
+        if (this.st > n * per + 30) this.next('idle'); break; }
       case 'summon':
         if (this.st === 1) { floatText(this.cx, this.y - 10, '走れ！戰鬥員！', '#ff9a6a', true); Audio8.sfx('bark'); this.summon('g', 2 + (G.hard ? 1 : 0), 4); }
         if (this.st > 60) this.next('idle'); break;
     }
-    if (this.throwT) this.throwT--;
+    if (this.throwT) this.throwT--; if (this.holdT) this.holdT--;
   }
   // ===== 二周目 最終關：怪獸社長 =====
   shacho() {
@@ -466,7 +472,9 @@ class Boss {
         const hit = this.flash > 8 && !this.defeated, ox = hit ? (this.flash % 4 < 2 ? -2 : 2) : 0, sq = hit ? 0.93 : 1;
         ctx.save(); if (this.inv > 0 && !this.defeated && !hit && this.inv % 6 < 3) ctx.globalAlpha = 0.35; // 無敵時間：閃爍
         ctx.translate(Math.round(this.cx - cx + ox), dy); ctx.scale(2 - sq, sq);
+        if (this.kind === 'rhinoB' && !this.defeated) { const lean = this.holdT ? -0.14 : this.throwT ? 0.16 : 0; if (lean) ctx.rotate(lean * this.face); } // 丟東西：舉起時往後仰、丟出時往前甩
         SPR.draw(ctx, sk, 0, 0, this.face); if (white) SPR.draw(ctx, sk, 0, 0, this.face, true, 0.85);
+        if (this.kind === 'rhinoB' && this.holdT && !this.defeated) drawRubble(ctx, -this.face * 4, -this.h - 14, 1.6, this.t); // 舉在頭上的廢土塊
         ctx.restore(); }
       if (this.kind === 'lady' && sk === 'l_stand' && !SPR.has('chi')) {}
       return;

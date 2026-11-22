@@ -289,11 +289,12 @@ class Player {
     if (k === 'h_hurt' || k === 'h_stagger') return 'wp_hurt';
     if (k === 'h_climb0') return 'wp_climb';
     if (k === 'h_win') return 'wp_win';
-    if (!this.onGround && !this.climbing) return this.charge >= 22 || this.shootT > 0 ? 'wp_charge' : 'wp_dash'; // 空中射擊：騎著掃把從掃把頭放星星
+    if (!this.onGround && !this.climbing) return 'wp_dash'; // 空中一律騎掃把飛行（集氣靠閃光表現，不會變成蹲姿）
     if (k === 'h_dash') return 'wp_dash';
-    if (k === 'h_charge' || this.charge >= 22) return 'wp_charge';
+    if (this.crouch) return 'wp_charge'; // 只有真的按↓蹲下才用蹲姿
+    if (k.startsWith('h_run')) return 'wp_run' + (Math.floor(this.anim / 5) % 3); // 走路時集氣也照樣跑（集氣靠閃光表現）
+    if (k === 'h_charge' || this.charge >= 22) return 'wp_shoot';
     if (k === 'h_shoot') return 'wp_shoot';
-    if (k.startsWith('h_run')) return 'wp_run' + (Math.floor(this.anim / 5) % 3);
     if (k.startsWith('h_j')) return 'wp_jump';
     return Math.floor(this.anim / 60) % 4 === 3 ? 'wp_wave' : 'wp_stand';
   }
@@ -604,15 +605,17 @@ class Enemy {
       case 'r': this.gravity(); this.patrol(this.near(160) ? 2.2 : 0.8); moveBody(this); break;
       case 'g': { // 犀牛戰鬥員：看到小編就低頭衝過來，靠近時出拳
         this.gravity(); if (this.punchT) this.punchT--;
-        if (this.near(160) && this.onGround) { this.faceP(); const dx = Math.abs(P.cx - this.cx);
-          if (dx < 26 && !this.punchT && this.st > 30) { this.punchT = 18; this.st = 0; this.vx = 0; Audio8.sfx('throw', 0.1); if (Math.abs(P.cy - this.cy) < 20) P.hurt(this.dmg + 1, this.cx, '被犀牛戰鬥員揍了！'); }
-          else if (!this.punchT) { this.vx = this.face * 1.7; if (!groundAhead(this, this.face)) this.vx = 0; } else this.vx = 0; }
+        if (this.restT > 0) { this.restT--; this.vx = this.restT > 45 ? -this.face * 1.2 : 0; moveBody(this); break; } // 打完人：退一步、喘口氣再來
+        if ((this.rush || this.near(160)) && this.onGround) { this.faceP(); const dx = Math.abs(P.cx - this.cx);
+          if (dx < 26 && !this.punchT && this.st > 30) { this.punchT = 18; this.st = 0; this.vx = 0; Audio8.sfx('throw', 0.1); if (Math.abs(P.cy - this.cy) < 20 && P.hurt(this.dmg + 1, this.cx, '被犀牛戰鬥員揍了！')) this.restT = 60; }
+          else if (!this.punchT) { this.vx = this.face * (this.rush ? 2.2 : 1.7); if (!this.rush && !groundAhead(this, this.face)) this.vx = 0; } else this.vx = 0; }
         else this.patrol(0.6);
         moveBody(this); break; }
       case 'x': { // 小病毒：一跳一跳靠近；variant 2 會飛
         if (this.variant === 2) { const tx = this.ox + Math.sin(this.t / 35) * 34, ty = this.oy - 30 + Math.sin(this.t / 11) * 12; if (this.near(150)) { this.ox += Math.sign(P.cx - this.ox) * 0.35; this.oy += Math.sign(P.cy + 20 - this.oy) * 0.2; } this.x = tx - this.w / 2; this.y = ty; this.face = Math.cos(this.t / 35) > 0 ? 1 : -1; break; }
         this.gravity();
-        if (this.onGround) { this.vx *= 0.8; if (this.st > 35) { this.faceP(); this.vx = this.face * (this.near(180) ? 1.6 : 0.8); this.vy = -3.4; this.st = 0; } }
+        if (this.restT > 0) this.restT--;
+        if (this.onGround) { this.vx *= 0.8; if (this.st > 35 && !(this.restT > 0)) { this.faceP(); this.vx = this.face * (this.rush || this.near(180) ? 1.6 : 0.8); this.vy = -3.4; this.st = 0; } }
         moveBody(this); break; }
       case 'R': {
         this.gravity();
@@ -645,7 +648,9 @@ class Enemy {
     }
     if (overlap(this, P) && !(this.code === 'v')) {
       if (P.dashT > 0 && G.abilities.dash && this.code === 'f') { this.damage(9, null); }
-      else P.hurt(this.dmg, this.cx);
+      else if (P.hurt(this.dmg, this.cx) && (this.code === 'g' || this.code === 'x')) { // 小怪撞到人之後彈開、停一下，不會一直黏著
+        this.restT = 60; this.faceP(); this.vx = -this.face * 1.5; if (this.code === 'x') this.vy = -2.5; this.st = 0;
+      }
     }
     if (this.y > G.level.h * TS + 40) this.dead = true;
   }
@@ -769,6 +774,18 @@ class Enemy {
 }
 
 // ---------- 敵方子彈 ----------
+// 廢土塊（犀牛怪人丟的）：棕色土塊夾著紅磚和水泥碎片，一邊轉一邊掉土
+function drawRubble(ctx, x, y, k, t) {
+  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k); ctx.rotate(((t || 0) >> 2) * 0.35);
+  const r = (a, b, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(a, b, w, h); };
+  r(-7, -5, 14, 10, '#16111f'); r(-6, -6, 12, 12, '#16111f');
+  r(-6, -5, 12, 10, '#7a5634'); r(-5, -6, 10, 12, '#7a5634');
+  r(-4, -4, 5, 3, '#a07a4a'); r(1, 1, 4, 3, '#5e4128');
+  r(-6, 0, 5, 3, '#b5452e'); r(-6, 0, 5, 1, '#d8664a'); // 紅磚
+  r(2, -5, 4, 3, '#9a958a'); r(2, -5, 4, 1, '#c8c2b5'); // 水泥塊
+  ctx.restore();
+  if (k === 1 && t % 6 === 0) G.parts.push({ x: x + G.camX, y: y + 4, vx: rnd(-0.3, 0.3), vy: 0.6, life: 14, max: 14, c: '#8a6a44', s: 1.5, g: 0.05 });
+}
 class EShot {
   constructor(type, x, y, vx, vy, o = {}) {
     Object.assign(this, { type, vx, vy, t: 0, grav: 0, dmg: 2, ...o }); if (this.dmg > 2) this.dmg -= 1;
@@ -799,6 +816,7 @@ class EShot {
         this.dead = true;
         if (this.type === 'bag' || this.type === 'rain') { const p = new Item('poop', this.cx, Math.floor((this.y + this.h) / TS) * TS, false); G.items.push(p); G.dynPoops++; Audio8.sfx('squish'); FX('venom', this.cx, p.y + p.h, { opts: { size: 0.3 }, life: 0.4 }); }
         else if (this.type === 'germ') { FX('venom', this.cx, this.y + this.h, { opts: { size: 0.3 }, life: 0.4 }); Audio8.sfx('squish'); if (this.spawn && G.arena && G.enemies.filter(e => e.code === 'x' && e.x > G.arena.x0 - 40).length < 6) G.enemies.push(new Enemy('x', this.cx, Math.floor((this.y + this.h) / TS) * TS)); }
+        else if (this.type === 'rock') { FX('dust', this.cx, this.y + this.h, { opts: { size: 0.45 } }); Audio8.sfx('stomp', 0.1); G.shake = Math.max(G.shake, 2); for (let i = 0; i < 5; i++) G.parts.push({ x: this.cx, y: this.y + this.h - 2, vx: rnd(-1.5, 1.5), vy: rnd(-2.5, -1), life: 24, max: 24, c: i % 2 ? '#7a5634' : '#b5452e', s: 2, g: 0.15 }); }
         else if (this.type === 'can') { const p = new Item('trash', this.cx, Math.floor((this.y + this.h) / TS) * TS, false); G.items.push(p); Audio8.sfx('hit'); FX('dust', this.cx, this.y + this.h, { opts: { size: 0.3 } }); }
         else { FX('air', this.cx, this.y + this.h, { opts: { size: 0.3 } }); Audio8.sfx('hit'); }
       }
@@ -824,7 +842,7 @@ class EShot {
       case 'wave': { ctx.fillStyle = '#16111f'; ctx.fillRect(x - 1, y - 1, this.w + 2, this.h + 2); ctx.fillStyle = (this.t >> 2) % 2 ? '#c48a4f' : '#e8bf86'; ctx.fillRect(x, y + 4, this.w, this.h - 4); ctx.fillRect(x + 3, y, this.w - 6, 4); break; }
       case 'germ': { const c = x + 5, d = y + 5; ctx.fillStyle = '#7a3a8a'; for (let i = 0; i < 6; i++) { const a = i * 1.05 + this.t / 8; ctx.fillRect(Math.round(c + Math.cos(a) * 5) - 1, Math.round(d + Math.sin(a) * 5) - 1, 3, 3); } ctx.fillStyle = '#16111f'; ctx.beginPath(); ctx.arc(c, d, 5, 0, 7); ctx.fill(); ctx.fillStyle = '#8fbf3a'; ctx.beginPath(); ctx.arc(c, d, 4, 0, 7); ctx.fill(); ctx.fillStyle = '#ffb000'; ctx.fillRect(c, d - 2, 2, 2); break; }
       case 'orb': { const c = x + 6, d = y + 6, r = 5 + Math.sin(this.t / 3); ctx.globalAlpha = 0.45; ctx.fillStyle = '#b04dff'; ctx.beginPath(); ctx.arc(c, d, r + 3, 0, 7); ctx.fill(); ctx.globalAlpha = 1; ctx.fillStyle = '#2a0a3a'; ctx.beginPath(); ctx.arc(c, d, r, 0, 7); ctx.fill(); ctx.fillStyle = '#ff5af0'; ctx.fillRect(c - 1, d - 1, 2, 2); break; }
-      case 'rock': { ctx.fillStyle = '#16111f'; ctx.fillRect(x, y + 1, 12, 9); ctx.fillRect(x + 1, y, 10, 11); ctx.fillStyle = '#8a8378'; ctx.fillRect(x + 1, y + 1, 10, 9); ctx.fillStyle = '#b5ad9e'; ctx.fillRect(x + 2, y + 2, 5, 3); break; }
+      case 'rock': drawRubble(ctx, x + 6, y + 6, 1, this.t); break; // 廢土塊
       case 'can': { ctx.save(); ctx.translate(x + 5, y + 6); ctx.rotate(this.t / 5); ctx.fillStyle = '#16111f'; ctx.fillRect(-5, -6, 10, 12); ctx.fillStyle = (this.t >> 3) % 2 ? '#d84a3a' : '#4a9ad8'; ctx.fillRect(-4, -5, 8, 10); ctx.fillStyle = '#ddd'; ctx.fillRect(-4, -5, 8, 2); ctx.restore(); break; }
       case 'gust': { ctx.globalAlpha = 0.7; ctx.strokeStyle = '#dff4ff'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { const yy = y + 4 + i * 7, ph = (this.t * 2 + i * 9) % 18; ctx.beginPath(); ctx.moveTo(x + ph * 0.3, yy); ctx.quadraticCurveTo(x + 9, yy - 4, x + 18 - ph * 0.3, yy); ctx.stroke(); } ctx.globalAlpha = 1; break; }
       default: ctx.fillStyle = '#fff'; ctx.fillRect(x, y, this.w, this.h);
