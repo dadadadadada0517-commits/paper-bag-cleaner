@@ -417,11 +417,15 @@ class Boss {
   damage(dmg, b) {
     if (this.inv > 0 || this.defeated || this.hidden || this.state === 'enter' && G.mode !== 'boss') return false;
     if (this.kind === 'abo' && b && overlap(b, this.dog) && this.dog.state !== 'stun') { this.dog.state = 'stun'; this.dog.st = 0; this.dog.flash = 10; floatText(this.dog.x + 15, this.dog.y - 4, '嗚…', '#fff'); Audio8.sfx('hit'); return true; }
-    const weak = b && b.wkind && WEAKNESS[this.kind] === b.wkind;
+    const wk = WEAKNESS[this.kind], weak = b && b.wkind && (Array.isArray(wk) ? wk.includes(b.wkind) : wk === b.wkind);
     if (weak) {
       dmg = Math.max(4, Math.round(dmg * 2)); this.stagger = 36;
       floatText(this.cx, this.y - 16, '弱點！效果拔群！', '#ff5a5a', true); FX('ink', this.cx, this.cy); G.shake = 8;
-      const cry = { abo: '哇啊！我的袋子被吸走了！', lady: '不要！塑膠袋配不上我的名牌！', dogking: '嗚汪！香香的…好難受！', virus: '嗚哇！肥皂泡泡…病毒最怕這個！', typhoonB: '反方向的旋風！我的風被吸走了！', rhinoB: '垃圾袋炸彈！好痛好痛！' }[this.kind];
+      const cry = { abo: '哇啊！我的袋子被吸走了！', lady: '不要！塑膠袋配不上我的名牌！', dogking: '嗚汪！香香的…好難受！',
+        'virus:bubble': '嗚哇！肥皂泡泡…病毒最怕這個！', 'virus:ram': '被廢土壓扁了！咳咳咳！',
+        'typhoonB:tornado': '反方向的旋風！我的風被吸走了！', 'typhoonB:spray': '消毒水把我的雲打濕了！飛不動啦！',
+        'rhinoB:bag': '垃圾袋炸彈！好痛好痛！', 'rhinoB:gust': '風好大！站、站不穩啊！',
+        shacho: '我的黑氣…被吹散了！？' }[this.kind + ':' + b.wkind] || { abo: '哇啊！我的袋子被吸走了！', lady: '不要！塑膠袋配不上我的名牌！', dogking: '嗚汪！香香的…好難受！', shacho: '我的黑氣…被吹散了！？' }[this.kind];
       if (cry && (!this.cryT || G.t - this.cryT > 200)) { this.cryT = G.t; floatText(this.cx, this.y - 30, cry, '#fff'); }
     }
     this.hp -= dmg; this.inv = 45; this.flash = 18; Audio8.sfx('hit'); // 洛克人式：被打後約 0.75 秒無敵（會閃爍），不能連續狂打

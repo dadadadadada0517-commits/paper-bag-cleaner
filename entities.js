@@ -115,7 +115,7 @@ class Player {
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
   hurt(dmg, fromX, msg) {
-    if (this.inv > 0 || this.dead || G.mode === 'ready' || this.dashT > 0 && G.abilities.dash) return false;
+    if (this.inv > 0 || this.dead || G.mode === 'ready' || this.dashT > 0 && G.abilities.dash || this.ramT > 0) return false; // 廢土衝撞中無敵
     this.hp -= dmg; Audio8.sfx('hurt'); G.shake = 6;
     if (msg) floatText(this.cx, this.y - 6, msg, '#ff8a8a');
     this.climbing = false; this.charge = 0;
@@ -138,6 +138,7 @@ class Player {
     if (this.dead) { this.deadT++; return; }
     if (this.inv > 0) this.inv--;
     if (this.dashCd > 0) this.dashCd--;
+    if (this.ramT > 0) this.ramT--;
     this.anim++;
     if (this.frozen) { this.vx = 0; this.vy = Math.min(this.vy + 0.25, 6); moveBody(this); this.shootT = 0; return; }
     // 受傷硬直
@@ -173,7 +174,7 @@ class Player {
     if (I.held.left || I.held.right || I.held.jump || I.held.shoot || !this.onGround) this.idleT = 0; else this.idleT++;
     this.runT = (I.held.left || I.held.right) && this.onGround ? (this.runT || 0) + 1 : 0;
     if (this.dashT > 0) {
-      this.dashT--; this.vx = this.face * 3.4; this.vy = this.onGround ? this.vy : Math.min(this.vy, 0.2);
+      this.dashT--; this.vx = this.face * (this.ramT > 0 ? 4.4 : 3.4); this.vy = this.onGround ? this.vy : Math.min(this.vy, 0.2);
       if (this.anim % 3 === 0) G.parts.push({ x: this.cx - this.face * 14, y: this.y + this.h - 3, vx: -this.face * 0.8, vy: -0.3, life: 18, max: 18, c: '#e8dcc0', s: 3, g: 0 });
       if (I.pressed.jump && this.onGround) { this.dashT = 0; this.dashJump = true; this.vy = -6; Audio8.sfx('jump'); }
       if (!this.dashT) this.dashCd = 8;
@@ -239,8 +240,10 @@ class Player {
         if ((G.ammo[wk] || 0) < cost) { Audio8.sfx('clink'); floatText(this.cx, this.y - 6, '武器能量不足！沖便便或撿清潔劑補充', '#ff8a8a'); return; }
         G.ammo[wk] -= cost; this.shootT = 16;
         if (wk === 'bubble') for (let i = 0; i < (ch ? 5 : 3); i++) G.bullets.push(new WBullet('bubble', bx, by - 2, this.face, i, ch));
+        else if (wk === 'spray') for (let i = 0; i < (ch ? 9 : 5); i++) G.bullets.push(new WBullet('spray', bx, by, this.face, i, ch));
+        else if (wk === 'ram') { this.ramT = ch ? 34 : 22; this.dashT = this.ramT; G.bullets.push(new WBullet('ram', bx, by, this.face, 0, ch)); G.shake = 3; }
         else G.bullets.push(new WBullet(wk, bx, by, this.face, 0, ch));
-        Audio8.sfx(wk === 'bag' ? 'throw' : wk === 'bubble' ? 'djump' : 'dash');
+        Audio8.sfx(wk === 'bag' ? 'throw' : wk === 'bubble' ? 'djump' : wk === 'spray' ? 'gas' : wk === 'ram' ? 'stomp' : 'dash');
         if (ch) { Audio8.sfx('bigshot'); G.shake = 4; sparks(bx, by, W.color, 10, 2.2, 0); floatText(this.cx, this.y - 8, '集氣' + W.name + '！', W.color); }
         return;
       }
@@ -416,6 +419,13 @@ class WBullet {
     this.ch = !!charged; const k = this.k = charged ? 2.6 : 1.7;
     if (kind === 'bag') { this.w = 10 * k; this.h = 10 * k; this.vx = dir * (charged ? 3 : 2.6); this.vy = -4.2; this.dmg = charged ? 7 : 3; }
     else if (kind === 'bubble') { this.w = 10 * k; this.h = 10 * k; this.vx = dir * (1.4 + i * 0.5); this.vy = -0.4 - (i - (charged ? 1 : 0)) * 0.45; this.dmg = charged ? 4 : 2; this.ph = i * 2; if (charged) this.pierce = true; }
+    else if (kind === 'spray') { // 消毒噴霧：扇形水霧，射程短
+      this.w = 7 * k; this.h = 7 * k; const a = (i - (charged ? 4 : 2)) * 0.16, sp = charged ? 4.2 : 3.6;
+      this.vx = dir * Math.cos(a) * sp * rnd(0.85, 1.1); this.vy = Math.sin(a) * sp; this.dmg = charged ? 3 : 2; this.life = charged ? 34 : 24; this.pierce = !!charged; }
+    else if (kind === 'gust') { // 強風吹拂：一道會推開敵人、吹散子彈的風牆
+      this.w = 14 * k; this.h = 26 * k; this.vx = dir * (charged ? 2.6 : 3.2); this.vy = 0; this.dmg = charged ? 5 : 2; this.pierce = true; this.life = charged ? 90 : 60; y -= 4; }
+    else if (kind === 'ram') { // 廢土衝撞：跟著主角往前衝的撞擊判定
+      this.w = 18 * k / 1.2; this.h = 26; this.vx = 0; this.vy = 0; this.dmg = charged ? 8 : 4; this.pierce = true; this.follow = G.player; }
     else { this.w = 18 * k / 1.2; this.h = 28 * k / 1.2; this.vx = dir * (charged ? 3.6 : 3); this.vy = 0; this.dmg = charged ? 7 : 3; this.pierce = true; this.fx = FX('dust', x, y + 14, { follow: this, life: 3, opts: { size: charged ? 0.7 : 0.45 } }); y -= charged ? 16 : 6; }
     this.x = x - this.w / 2; this.y = y - this.h / 2;
   }
@@ -424,13 +434,26 @@ class WBullet {
     this.t++;
     if (this.wkind === 'bag') { this.vy += 0.22; }
     if (this.wkind === 'bubble') { this.vy = Math.max(this.vy - 0.01, -1.2); this.x += Math.sin((this.t + this.ph * 10) / 8) * 0.4; if (this.t > 130) this.kill(true); }
+    if (this.wkind === 'spray') { this.vx *= 0.95; this.vy *= 0.95; if (this.t > this.life) this.kill(false); }
+    if (this.wkind === 'gust') {
+      if (this.t > this.life) this.kill(false);
+      for (const s of G.eshots) if (!s.dead && overlap(this, s)) { s.dead = true; sparks(s.cx, s.y, '#dff4ff', 4, 1.2, 0); } // 吹散敵人的子彈
+      for (const e of G.enemies) if (!e.dead && overlap(this, e) && e.code !== 'v') { e.x += this.dir * (this.ch ? 3 : 2); }
+      if (this.t % 3 === 0) G.parts.push({ x: this.cx + rnd(-6, 6), y: this.y + rnd(0, this.h), vx: this.dir * 2.5, vy: rnd(-0.3, 0.3), life: 16, max: 16, c: '#e8f6ff', s: 2, g: 0 });
+    }
+    if (this.wkind === 'ram') {
+      const P = this.follow; if (!P || !(P.ramT > 0) || P.dead) { this.kill(false); return; }
+      this.dir = P.face; this.x = P.cx + P.face * 10 - this.w / 2; this.y = P.y + P.h - this.h;
+      if (this.t % 2 === 0) G.parts.push({ x: P.cx - P.face * 10, y: P.y + P.h - 3, vx: -P.face * 1.2, vy: rnd(-1, -0.2), life: 20, max: 20, c: this.t % 4 ? '#8a6a44' : '#b5452e', s: 3, g: 0.1 });
+      return; // 位置跟著主角，不另外移動
+    }
     if (this.wkind === 'tornado') {
       for (const it of G.items) if (it.type === 'trash' && Math.abs(it.cx - this.cx) < 40 && Math.abs(it.y - this.y) < 40) { it.x += (this.cx - it.cx) * 0.25; it.y += (this.y + 10 - it.y) * 0.25; if (Math.abs(it.cx - this.cx) < 8) { it.dead = true; G.cleanUp(it.cx, it.y, '吸走垃圾！'); Audio8.sfx('trash'); } }
       if (this.fx) { this.fx.wx = this.cx; this.fx.wy = this.y + this.h; }
     }
     this.x += this.vx; this.y += this.vy;
     if (Math.abs(this.cx - G.camX - VW / 2) > VW / 2 + 40 || this.y > VH + 20 || this.y < -60) this.kill(false);
-    if (this.wkind !== 'tornado' && isSolid(Math.floor(this.cx / TS), Math.floor((this.y + this.h / 2) / TS))) this.kill(true);
+    if (this.wkind !== 'tornado' && this.wkind !== 'gust' && isSolid(Math.floor(this.cx / TS), Math.floor((this.y + this.h / 2) / TS))) this.kill(true);
   }
   burst() {
     FX('explode', this.cx, this.y + this.h / 2, { opts: { size: this.ch ? 0.8 : 0.55, color: '#7fd17f' } }); Audio8.sfx('explode'); G.shake = this.ch ? 7 : 4;
@@ -452,6 +475,9 @@ class WBullet {
     if (this.ch && this.t % 4 < 2) { ctx.globalAlpha = 0.35; ctx.fillStyle = this.wkind === 'bag' ? '#b8ffb8' : this.wkind === 'bubble' ? '#ffd0f4' : '#fff2a8'; ctx.beginPath(); ctx.arc(x + this.w / 2, y + this.h / 2, Math.max(this.w, this.h) * 0.62, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
     if (this.wkind === 'bag') { ctx.save(); ctx.translate(x + this.w / 2, y + this.h / 2); ctx.rotate(this.t * 0.18 * this.dir); ctx.scale(k, k); if (!SPR.draw(ctx, 'bagItem', 0, 6, this.dir)) { ctx.fillStyle = '#3d9a4a'; ctx.fillRect(-5, -5, 10, 10); } ctx.restore(); }
     else if (this.wkind === 'bubble') { const r = 5 * k, X = x + this.w / 2, Y = y + this.h / 2; ctx.lineWidth = 1.2; ctx.strokeStyle = '#16111f'; ctx.fillStyle = 'rgba(255,170,230,0.55)'; ctx.beginPath(); ctx.arc(X, Y, r, 0, 7); ctx.fill(); ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.arc(X, Y, r - 2, 3.6, 4.6); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(X - r * 0.5), Math.round(Y - r * 0.55), Math.max(2, Math.round(r * 0.3)), Math.max(2, Math.round(r * 0.3))); }
+    else if (this.wkind === 'spray') { const X = x + this.w / 2, Y = y + this.h / 2, r = this.w / 2 * (1 + this.t / 40); ctx.globalAlpha = Math.max(0.25, 0.85 - this.t / (this.life * 1.2)); ctx.fillStyle = '#bffff0'; ctx.beginPath(); ctx.arc(X, Y, r, 0, 7); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(X - 1), Math.round(Y - 1), 2, 2); ctx.globalAlpha = 1; }
+    else if (this.wkind === 'gust') { ctx.globalAlpha = 0.8; ctx.strokeStyle = '#16111f'; ctx.lineWidth = 3; const arcs = (col, lw) => { ctx.strokeStyle = col; ctx.lineWidth = lw; for (let i = 0; i < 4; i++) { const yy = y + 3 + i * this.h / 4, ph = (this.t * 2 + i * 7) % 14; ctx.beginPath(); ctx.moveTo(x + ph * 0.3, yy); ctx.quadraticCurveTo(x + this.w / 2 + this.dir * 4, yy - 5, x + this.w - ph * 0.3, yy + 2); ctx.stroke(); } }; arcs('#16111f', 3.2); arcs(this.t % 4 < 2 ? '#ffffff' : '#cfe6ff', 1.6); ctx.globalAlpha = 1; }
+    else if (this.wkind === 'ram') { const X = x + this.w / 2 + this.dir * 4, Y = y + this.h / 2; ctx.globalAlpha = 0.6; ctx.fillStyle = '#c89a5a'; ctx.beginPath(); ctx.ellipse(X, Y + 2, this.w / 2 + 2, this.h / 2, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1; drawRubble(ctx, X + this.dir * 4, Y - 2, this.ch ? 1.8 : 1.4, this.t); }
     else { const s = k / 1.2; ctx.globalAlpha = 0.85; for (let i = 0; i < 6; i++) { const yy = y + this.h - i * 5 * s, r = (3 + i * 1.6) * s, ox = Math.sin(this.t / 3 + i) * 3 * s; ctx.fillStyle = i % 2 ? '#ffe36a' : '#e8c999'; ctx.fillRect(Math.round(x + this.w / 2 - r + ox), Math.round(yy - 3 * s), Math.round(r * 2), Math.round(3 * s)); } ctx.globalAlpha = 1; }
   }
 }

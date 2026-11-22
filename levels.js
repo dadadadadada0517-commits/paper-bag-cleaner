@@ -231,9 +231,14 @@ const WEAPONS = {
   bag: { name: '垃圾袋炸彈', color: '#7fd17f', cost: 3, from: 1, desc: '拋出會爆開的垃圾袋，範圍傷害、順便清掉附近便便。' },
   bubble: { name: '香香泡泡', color: '#ff9ae6', cost: 2, from: 2, desc: '一次吐出三顆香香泡泡，碰到便便會直接洗乾淨。' },
   tornado: { name: '吸塵旋風', color: '#ffd23f', cost: 4, from: 3, desc: '貫穿敵人的旋風，會把沿路的垃圾全部吸走。' },
+  // 二周目：吸收怪人的能力
+  spray: { name: '消毒噴霧', color: '#7fffe0', cost: 2, from: 5, desc: '近距離扇形噴灑消毒水，小病毒、便便一噴就乾淨。' },
+  gust: { name: '強風吹拂', color: '#cfe6ff', cost: 3, from: 6, desc: '放出一道強風，把敵人往後吹、敵人的子彈也一起吹散。' },
+  ram: { name: '廢土衝撞', color: '#e0a060', cost: 4, from: 7, desc: '扛著廢土往前猛衝，衝撞時無敵，撞到的敵人全部撞飛。' },
 };
-const STAGE_WEAPON = { 1: 'bag', 2: 'bubble', 3: 'tornado' };
-const WEAKNESS = { abo: 'tornado', lady: 'bag', dogking: 'bubble', virus: 'bubble', typhoonB: 'tornado', rhinoB: 'bag' };
+const STAGE_WEAPON = { 1: 'bag', 2: 'bubble', 3: 'tornado', 5: 'spray', 6: 'gust', 7: 'ram' };
+// 弱點（洛克人式互相克制）：二周目怪人有兩個弱點＝一周目武器＋二周目武器；怪獸社長怕強風（黑氣被吹散）
+const WEAKNESS = { abo: 'tornado', lady: 'bag', dogking: 'bubble', virus: ['bubble', 'ram'], typhoonB: ['tornado', 'spray'], rhinoB: ['bag', 'gust'], shacho: ['gust'] };
 const ABILITIES = {
   charge: { name: '蓄力水砲', color: '#4fd7ff', desc: ['按住射擊鍵蓄力，放開發射強力水柱！', '可以貫穿敵人，也能沖掉「大坨的便便」。'] },
   djump: { name: '泡泡二段跳', color: '#ff7ad9', desc: ['在空中再按一次跳躍，', '噴射清潔泡泡再跳一次！'] },
